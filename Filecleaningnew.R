@@ -4771,6 +4771,7 @@ merged_seq_samples1$TSH[merged_seq_samples1$LocalID %in% IGIB_TSH$LocalID] <- IG
 IGIB_Chloride = read_xlsx("IGIB_chloride.xlsx")
 merged_seq_samples1$Cl._mEq.L[merged_seq_samples1$LocalID %in% IGIB_Chloride$LocalID] <- IGIB_Chloride$Chloride[match(merged_seq_samples1$LocalID[merged_seq_samples1$LocalID %in% IGIB_Chloride$LocalID], IGIB_Chloride$LocalID)]
 
+#go to missingness and run the empty_cols after this, not before
 # add labels as BBC or ODK ------------------------------------------------
 
 empty_cols$label = NA
@@ -4903,8 +4904,8 @@ for(V in variables){
 dev.off()
 
 
-merged_seq_samples_joined_cp = merged_seq_samples_joined
-merged_seq_samples_joined_cp = merged_seq_samples_joined_cp[, names(merged_seq_samples_joined_cp) %in% c("AST_SGOT","ALT_SGPT","Cholesterol","Creatinine","Triglycerides","HDL","Alkaline_Phosphatase","LDL","Lymphocytes","WBC_Total_White_Blood_Cell_Count","HB_Haemoglobin","RBC_Red_Blood_Cell_Count","Eosinophils","Total_Bilirubin","Monocytes","Neutrophils","Urea","Basophils","Platelet_Count","Direct_Bilirubin","HbA1C_Glycosylated_Haemoglobin","MCH_Mean_Corpuscular_Hb","Indirect_Bilirubin","Albumin","Protein", "center")]
+# merged_seq_samples_joined_cp = merged_seq_samples_joined
+# merged_seq_samples_joined_cp = merged_seq_samples_joined_cp[, names(merged_seq_samples_joined_cp) %in% c("AST_SGOT","ALT_SGPT","Cholesterol","Creatinine","Triglycerides","HDL","Alkaline_Phosphatase","LDL","Lymphocytes","WBC_Total_White_Blood_Cell_Count","HB_Haemoglobin","RBC_Red_Blood_Cell_Count","Eosinophils","Total_Bilirubin","Monocytes","Neutrophils","Urea","Basophils","Platelet_Count","Direct_Bilirubin","HbA1C_Glycosylated_Haemoglobin","MCH_Mean_Corpuscular_Hb","Indirect_Bilirubin","Albumin","Protein", "center")]
 
 library(naniar)
 gg_miss_fct(x = merged_seq_samples_joined_cp1, fct = center)+scale_fill_gradientn(colors = c("navy","gold", "white"))
@@ -5040,7 +5041,7 @@ ft_cp = ft_cp[ -which(ft_cp$LocalID %in% seq_joined$LocalID),]
 
 newdups = ft_cp[duplicated(ft_cp$LocalID)|duplicated(ft_cp$LocalID, fromLast = T),]
 #df[duplicated(df$a)|duplicated(df$a, fromLast=TRUE),]
-write.table(newdups, "New Duplicates_20000_Jun4.txt", sep = '\t', row.names = F)
+#write.table(newdups, "New Duplicates_20000_Jun4.txt", sep = '\t', row.names = F)
 
 ft_cp = ft_cp[!(ft_cp$LocalID %in% newdups$LocalID),]
 
@@ -5407,6 +5408,53 @@ Samples = read.table("GI_PCA_ID_info(1).txt", sep = '\t', header = T)
 Samples$BBC_nonmissing = NA
 Samples$ODK_nonmissing = NA
 
+#Samples$nonmissing[Samples$Random.barcode %in% merged_seq_samples_joined_cp$SeqID] = rowSums(is.na())
+
+merged_seq_samples_joined_cp1_coded_BBC = subset(merged_seq_samples_joined_cp1,
+                                                 select = c("FBS_Fasting_Blood_Glucose",
+                                                            "HbA1C_Glycosylated_Haemoglobin",
+                                                            "Urea", "Creatinine", "Total_Bilirubin",
+                                                            "AST_SGOT", "ALT_SGPT", "Alkaline_Phosphatase",
+                                                            "Cholesterol", "Triglycerides", "HDL", "LDL",
+                                                            "HB_Haemoglobin", "RBC_Red_Blood_Cell_Count",
+                                                            "MCH_Mean_Corpuscular_Hb","WBC_Total_White_Blood_Cell_Count",
+                                                            "Neutrophils", "Lymphocytes", "Eosinophils", "Monocytes",
+                                                            "Basophils", "Platelet_Count", "Direct_Bilirubin","Indirect_Bilirubin",
+                                                            "Albumin", "Protein", "RBS", "SeqID"))
+merged_seq_samples_joined_cp1_coded_BBC$nonmissing = rowSums(!is.na(merged_seq_samples_joined_cp1_coded_BBC))
+merged_seq_samples_joined_cp1_coded_BBC$nonmissing = merged_seq_samples_joined_cp1_coded_BBC$nonmissing - 1 #for SeqID
+
+merged_seq_samples_joined_cp1_coded_ODK = subset(merged_seq_samples_joined_cp1_coded,
+                                                 select = c("introduction_1.examination_date",
+                                                            "name_dob.gps.Latitude","name_dob.gps.Longitude",
+                                                            "name_dob.gps.Altitude", "name_dob.gps.Accuracy",
+                                                            "name_dob_1.gps_offline", "name_dob_1.state",
+                                                            "name_dob_1.village", "name_dob_1.dob",
+                                                            "name_dob_1.age_on_interview", "name_dob_1.approx_age",
+                                                            "name_dob_1.year_of_birth", "name_dob_1.mother_tongue",
+                                                            "socio_demographics.marital_status","socio_demographics.n_children",
+                                                            "socio_demographics.lang_speak", "socio_demographics.lang_write",
+                                                            "socio_demographics.highest_edu", "socio_demographics.years_edu",
+                                                            "socio_demographics.medium_edu", "socio_demographics.occupation",
+                                                            "socio_demographics.income_family", "smoking_tobacco_alcohol.smoking_status",
+                                                            "smoking_tobacco_alcohol.chewing_tobacco_status","smoking_tobacco_alcohol.alcohol_status",
+                                                            "history_illness.history_illness_self", "history_illness.history_illness_father",
+                                                            "history_illness.history_illness_mother","history_illness.history_illness_family",
+                                                            "history_illness.medication_currently_status", "history_illness.name_medication",
+                                                            "anthropometry.sys_bp", "anthropometry.dia_bp", "anthropometry.head_cir",
+                                                            "anthropometry.height", "anthropometry.weight", "anthropometry.waist_cir",
+                                                            "anthropometry.hip_cir", "anthropometry.body_fat", "anthropometry.glucose_mg_dl",
+                                                            "blood_draw.Blood_draw_fasting", "center", "age", "age_withBBC", "BMI",
+                                                            "SeqID"))
+
+merged_seq_samples_joined_cp1_coded_ODK$nonmissing = rowSums(!is.na(merged_seq_samples_joined_cp1_coded_ODK))
+merged_seq_samples_joined_cp1_coded_ODK$nonmissing = merged_seq_samples_joined_cp1_coded_ODK$nonmissing+1 #adding for ethnicity and sex - 1 for SeqID
+
+
+Samples$BBC_nonmissing[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_BBC$SeqID] = merged_seq_samples_joined_cp1_coded_BBC$nonmissing[match(merged_seq_samples_joined_cp1_coded_BBC$SeqID[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_BBC$SeqID], merged_seq_samples_joined_cp1_coded_BBC$SeqID)]
+Samples$ODK_nonmissing[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_ODK$SeqID] = merged_seq_samples_joined_cp1_coded_ODK$nonmissing[match(merged_seq_samples_joined_cp1_coded_ODK$SeqID[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_ODK$SeqID], merged_seq_samples_joined_cp1_coded_ODK$SeqID)]
+
+write.table(Samples, "Samples_nonmissing_info.txt", sep = '\t', row.names = F)
 
 # final sample list -------------------------------------------------------
 
@@ -5414,16 +5462,183 @@ Samples$ODK_nonmissing = NA
 finalsamplelist = read.table("GI_QCd_sample_ids.txt")
 
 merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp[merged_seq_samples_joined_cp$SeqID %in% finalsamplelist$V1,]
-write.table(merged_seq_samples_joined_cp1, "Phenotype_NewSampleList_Jul3.txt", sep = '\t', row.names = F)
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -LocalID)
+merged_seq_samples_joined_cp1$history_illness.name_medication = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.name_medication)
+merged_seq_samples_joined_cp1$history_illness.history_illness_self = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_self)
+merged_seq_samples_joined_cp1$history_illness.history_illness_father = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_father)
+merged_seq_samples_joined_cp1$history_illness.history_illness_mother = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_mother)
+merged_seq_samples_joined_cp1$history_illness.history_illness_family = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_family)
+library(dplyr)
+merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>% 
+  mutate(across(everything(),  trimws, which = "both"))
+
+merged_seq_samples_joined_cp1$history_illness.name_medication = gsub('Ã°Â\u009fÂ\u0092Â\u008a', '', merged_seq_samples_joined_cp1$history_illness.name_medication)
+#merged_seq_samples_joined_cp1 = gsub('\u','',merged_seq_samples_joined_cp1)
+
+merged_seq_samples_joined_cp1$anthropometry.weight[as.numeric(merged_seq_samples_joined_cp1$anthropometry.weight)>300] = NA
+merged_seq_samples_joined_cp1$anthropometry.hip_cir[as.numeric(merged_seq_samples_joined_cp1$anthropometry.hip_cir)>400] = NA
+colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "calc1"] = "age_withBBC"
+colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "calc_age"] = "age"
+
+merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp1 %>% relocate(SeqID)
+write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_top25_Jul4.txt", sep = '\t', row.names = F)
 
 merged_seq_samples_joined_cp1$anthropometry.head_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.head_cir)
+
+merged_seq_samples_joined_cp1$FBS_Fasting_Blood_Glucose = as.numeric(merged_seq_samples_joined_cp1$FBS_Fasting_Blood_Glucose)
+merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin = as.numeric(merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin)
+#merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin[merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin == 0] = NA
+#merged_df_ft1 = read.table("Added_addnlt_Apr19.txt", sep = "\t", header = T, fill= T, encoding = 'latin1')
+merged_seq_samples_joined_cp1$Urea = as.numeric(merged_seq_samples_joined_cp1$Urea)
+merged_seq_samples_joined_cp1$Creatinine = as.numeric(merged_seq_samples_joined_cp1$Creatinine)
+merged_seq_samples_joined_cp1$Total_Bilirubin = as.numeric(merged_seq_samples_joined_cp1$Total_Bilirubin)
+merged_seq_samples_joined_cp1$ALT_SGPT = as.numeric(merged_seq_samples_joined_cp1$ALT_SGPT)
+merged_seq_samples_joined_cp1$AST_SGOT = as.numeric(merged_seq_samples_joined_cp1$AST_SGOT)
+merged_seq_samples_joined_cp1$Alkaline_Phosphatase = as.numeric(merged_seq_samples_joined_cp1$Alkaline_Phosphatase)
+merged_seq_samples_joined_cp1$Cholesterol = as.numeric(merged_seq_samples_joined_cp1$Cholesterol)
+merged_seq_samples_joined_cp1$Triglycerides = as.numeric(merged_seq_samples_joined_cp1$Triglycerides)
+merged_seq_samples_joined_cp1$HDL = as.numeric(merged_seq_samples_joined_cp1$HDL)
+merged_seq_samples_joined_cp1$LDL = as.numeric(merged_seq_samples_joined_cp1$LDL)
+#merged_seq_samples_joined_cp1$T3_Total = as.numeric(merged_seq_samples_joined_cp1$T3_Total)
+#merged_seq_samples_joined_cp1$T4_Total = as.numeric(merged_seq_samples_joined_cp1$T4_Total)
+#merged_seq_samples_joined_cp1$TSH = as.numeric(merged_seq_samples_joined_cp1$TSH)
+#merged_seq_samples_joined_cp1$Homocysteine_Levels = as.numeric(merged_seq_samples_joined_cp1$Homocysteine_Levels)
+#merged_seq_samples_joined_cp1$Vitamin_B12 = as.numeric(merged_seq_samples_joined_cp1$Vitamin_B12)
+#merged_seq_samples_joined_cp1$Folic_Acid = as.numeric(merged_seq_samples_joined_cp1$Folic_Acid)
+#merged_seq_samples_joined_cp1$Fasting_Insulin_Level = as.numeric(merged_seq_samples_joined_cp1$Fasting_Insulin_Level)
+#merged_seq_samples_joined_cp1$C.Peptide = as.numeric(merged_seq_samples_joined_cp1$C.Peptide)
+merged_seq_samples_joined_cp1$HB_Haemoglobin = as.numeric(merged_seq_samples_joined_cp1$HB_Haemoglobin)
+merged_seq_samples_joined_cp1$RBC_Red_Blood_Cell_Count = as.numeric(merged_seq_samples_joined_cp1$RBC_Red_Blood_Cell_Count) #this is probably in millions
+merged_seq_samples_joined_cp1$MCH_Mean_Corpuscular_Hb = as.numeric(merged_seq_samples_joined_cp1$MCH_Mean_Corpuscular_Hb)
+#merged_seq_samples_joined_cp1$MCHC_Mean_Corpuscular_Hb_Concn = as.numeric(merged_seq_samples_joined_cp1$MCHC_Mean_Corpuscular_Hb_Concn)
+#merged_seq_samples_joined_cp1$MCV_Mean_Corpuscular_Volume = as.numeric(merged_seq_samples_joined_cp1$MCV_Mean_Corpuscular_Volume)
+#merged_seq_samples_joined_cp1$RDW_Red_Cell_Distribution_Width = as.numeric(merged_seq_samples_joined_cp1$RDW_Red_Cell_Distribution_Width)
+merged_seq_samples_joined_cp1$WBC_Total_White_Blood_Cell_Count = as.numeric(merged_seq_samples_joined_cp1$WBC_Total_White_Blood_Cell_Count)
+merged_seq_samples_joined_cp1$Basophils = as.numeric(merged_seq_samples_joined_cp1$Basophils)
+merged_seq_samples_joined_cp1$Eosinophils = as.numeric(merged_seq_samples_joined_cp1$Eosinophils)
+merged_seq_samples_joined_cp1$Lymphocytes = as.numeric(merged_seq_samples_joined_cp1$Lymphocytes)
+merged_seq_samples_joined_cp1$Monocytes = as.numeric(merged_seq_samples_joined_cp1$Monocytes)
+merged_seq_samples_joined_cp1$Neutrophils = as.numeric(merged_seq_samples_joined_cp1$Neutrophils)
+merged_seq_samples_joined_cp1$Platelet_Count = as.numeric(merged_seq_samples_joined_cp1$Platelet_Count)
+#merged_seq_samples_joined_cp1$A_G_Ratio_Albumin_Globulin = as.numeric(merged_seq_samples_joined_cp1$A_G_Ratio_Albumin_Globulin)
+#merged_seq_samples_joined_cp1$Absolute_Neutrophil_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Neutrophil_Count)
+#merged_seq_samples_joined_cp1$Absolute_Basophil_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Basophil_Count)
+#merged_seq_samples_joined_cp1$Absolute_Eosinophil_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Eosinophil_Count)
+#merged_seq_samples_joined_cp1$Absolute_Lymphocyte_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Lymphocyte_Count)
+#merged_seq_samples_joined_cp1$Absolute_Monocyte_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Monocyte_Count)
+#merged_seq_samples_joined_cp1$CHOL_HDL_Ratio = as.numeric(merged_seq_samples_joined_cp1$CHOL_HDL_Ratio)
+merged_seq_samples_joined_cp1$Direct_Bilirubin = as.numeric(merged_seq_samples_joined_cp1$Direct_Bilirubin)
+#merged_seq_samples_joined_cp1$ESR = as.numeric(merged_seq_samples_joined_cp1$ESR)
+#merged_seq_samples_joined_cp1$Estimated_Average_Glucose = as.numeric(merged_seq_samples_joined_cp1$Estimated_Average_Glucose)
+#merged_seq_samples_joined_cp1$Gamma_GT_GGTP = as.numeric(merged_seq_samples_joined_cp1$Gamma_GT_GGTP)
+#merged_seq_samples_joined_cp1$Globulin = as.numeric(merged_seq_samples_joined_cp1$Globulin)
+merged_seq_samples_joined_cp1$Indirect_Bilirubin = as.numeric(merged_seq_samples_joined_cp1$Indirect_Bilirubin)
+#merged_seq_samples_joined_cp1$LDL_HDL_Ratio = as.numeric(merged_seq_samples_joined_cp1$LDL_HDL_Ratio)
+#merged_seq_samples_joined_cp1$Hematocrit = as.numeric(merged_seq_samples_joined_cp1$Hematocrit)
+merged_seq_samples_joined_cp1$Albumin = as.numeric(merged_seq_samples_joined_cp1$Albumin)
+merged_seq_samples_joined_cp1$Protein = as.numeric(merged_seq_samples_joined_cp1$Protein)
+#merged_seq_samples_joined_cp1$VLDL = as.numeric(merged_seq_samples_joined_cp1$VLDL)
+#merged_seq_samples_joined_cp1$RDW_SD = as.numeric(merged_seq_samples_joined_cp1$RDW_SD)
+#merged_seq_samples_joined_cp1$CRP = as.numeric(merged_seq_samples_joined_cp1$CRP)
+#merged_seq_samples_joined_cp1$MPV_Mean_Platelet_Volume = as.numeric(merged_seq_samples_joined_cp1$MPV_Mean_Platelet_Volume)
+#merged_seq_samples_joined_cp1$Immature_granulocyte_perc = as.numeric(merged_seq_samples_joined_cp1$Immature_granulocyte_perc)
+#merged_seq_samples_joined_cp1$IG_0.0.3 = as.numeric(merged_seq_samples_joined_cp1$IG_0.0.3)
+#merged_seq_samples_joined_cp1$PDW = as.numeric(merged_seq_samples_joined_cp1$PDW)
+#merged_seq_samples_joined_cp1$PLCR = as.numeric(merged_seq_samples_joined_cp1$PLCR)
+#merged_seq_samples_joined_cp1$PCT = as.numeric(merged_seq_samples_joined_cp1$PCT)
+merged_seq_samples_joined_cp1$RBS = as.numeric(merged_seq_samples_joined_cp1$RBS)
+#merged_seq_samples_joined_cp1$GLYCOSYLATED_Hb_IFCC = as.numeric(merged_seq_samples_joined_cp1$GLYCOSYLATED_Hb_IFCC)
+#merged_seq_samples_joined_cp1$BUN = as.numeric(merged_seq_samples_joined_cp1$BUN)
+#merged_seq_samples_joined_cp1$BUN_Sr_creatinine = as.numeric(merged_seq_samples_joined_cp1$BUN_Sr_creatinine)
+#merged_seq_samples_joined_cp1$Uric_Acid = as.numeric(merged_seq_samples_joined_cp1$Uric_Acid)
+#merged_seq_samples_joined_cp1$Estimated_Glomerular_filtration_rate = as.numeric(merged_seq_samples_joined_cp1$Estimated_Glomerular_filtration_rate)
+#merged_seq_samples_joined_cp1$NonHDL_Cholesterol = as.numeric(merged_seq_samples_joined_cp1$NonHDL_Cholesterol)
+#merged_seq_samples_joined_cp1$Vitamin_D_25_Hydroxy = as.numeric(merged_seq_samples_joined_cp1$Vitamin_D_25_Hydroxy)
+#merged_seq_samples_joined_cp1$Free_T3 = as.numeric(merged_seq_samples_joined_cp1$Free_T3)
+#merged_seq_samples_joined_cp1$Free_T4 = as.numeric(merged_seq_samples_joined_cp1$Free_T4)
+#merged_seq_samples_joined_cp1$Hs.CRP_High_Sensitivity_CRP = as.numeric(merged_seq_samples_joined_cp1$Hs.CRP_High_Sensitivity_CRP)
+#merged_seq_samples_joined_cp1$Transferrin = as.numeric(merged_seq_samples_joined_cp1$Transferrin)
+#merged_seq_samples_joined_cp1$Polymorphs = as.numeric(merged_seq_samples_joined_cp1$Polymorphs)
+#merged_seq_samples_joined_cp1$Sodium = as.numeric(merged_seq_samples_joined_cp1$Sodium)
+#merged_seq_samples_joined_cp1$Potassium = as.numeric(merged_seq_samples_joined_cp1$Potassium)
+#merged_seq_samples_joined_cp1$SerumIronStudy_TIBC_UIBC = as.numeric(merged_seq_samples_joined_cp1$SerumIronStudy_TIBC_UIBC)
+# merged_seq_samples_joined_cp1$Transferrin_Saturation = as.numeric(merged_seq_samples_joined_cp1$Transferrin_Saturation)
+# merged_seq_samples_joined_cp1$Immature_granulocytes = as.numeric(merged_seq_samples_joined_cp1$Immature_granulocytes)
+# merged_seq_samples_joined_cp1$LDH_1 = as.numeric(merged_seq_samples_joined_cp1$LDH_1)
+# merged_seq_samples_joined_cp1$Total_Calcium = as.numeric(merged_seq_samples_joined_cp1$Total_Calcium)
+# merged_seq_samples_joined_cp1$Serum_Iron = as.numeric(merged_seq_samples_joined_cp1$Serum_Iron)
+# merged_seq_samples_joined_cp1$MENTZ1 = as.numeric(merged_seq_samples_joined_cp1$MENTZ1)
+# merged_seq_samples_joined_cp1$NLR_4 = as.numeric(merged_seq_samples_joined_cp1$NLR_4)
+# merged_seq_samples_joined_cp1$PO4_mg.dl = as.numeric(merged_seq_samples_joined_cp1$PO4_mg.dl)
+# merged_seq_samples_joined_cp1$Cl._mEq.L = as.numeric(merged_seq_samples_joined_cp1$Cl._mEq.L)
+# merged_seq_samples_joined_cp1$SGOT_SGPT = as.numeric(merged_seq_samples_joined_cp1$SGOT_SGPT)
+# merged_seq_samples_joined_cp1$CHOL.LDL_Ratio = as.numeric(merged_seq_samples_joined_cp1$CHOL.LDL_Ratio)
+# merged_seq_samples_joined_cp1$APB. = as.numeric(merged_seq_samples_joined_cp1$APB.)
+# merged_seq_samples_joined_cp1$APOA = as.numeric(merged_seq_samples_joined_cp1$APOA)
+# merged_seq_samples_joined_cp1$APOB = as.numeric(merged_seq_samples_joined_cp1$APOB)
+# merged_seq_samples_joined_cp1$LPA = as.numeric(merged_seq_samples_joined_cp1$LPA)
+merged_seq_samples_joined_cp1$anthropometry.head_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.head_cir)
+merged_seq_samples_joined_cp1$anthropometry.height = as.numeric(merged_seq_samples_joined_cp1$anthropometry.height)
+merged_seq_samples_joined_cp1$anthropometry.hip_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.hip_cir)
+merged_seq_samples_joined_cp1$anthropometry.sys_bp = as.numeric(merged_seq_samples_joined_cp1$anthropometry.sys_bp)
+merged_seq_samples_joined_cp1$anthropometry.dia_bp = as.numeric(merged_seq_samples_joined_cp1$anthropometry.dia_bp)
+merged_seq_samples_joined_cp1$anthropometry.body_fat = as.numeric(merged_seq_samples_joined_cp1$anthropometry.body_fat)
+merged_seq_samples_joined_cp1$anthropometry.waist_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.waist_cir)
+merged_seq_samples_joined_cp1$anthropometry.weight = as.numeric(merged_seq_samples_joined_cp1$anthropometry.weight)
+merged_seq_samples_joined_cp1$anthropometry.glucose_mg_dl = as.numeric(merged_seq_samples_joined_cp1$anthropometry.glucose_mg_dl)
+# merged_seq_samples_joined_cp1$Granulocytes = as.numeric(merged_seq_samples_joined_cp1$Granulocytes)
+# merged_seq_samples_joined_cp1$Granulocyte_count = as.numeric(merged_seq_samples_joined_cp1$Granulocyte_count)
+# merged_seq_samples_joined_cp1$MID = as.numeric(merged_seq_samples_joined_cp1$MID)
+# merged_seq_samples_joined_cp1$MID_Percent = as.numeric(merged_seq_samples_joined_cp1$MID_Percent)
+merged_seq_samples_joined_cp1$age = as.numeric(merged_seq_samples_joined_cp1$age)
+merged_seq_samples_joined_cp1$age_withBBC = as.numeric(merged_seq_samples_joined_cp1$age_withBBC)
+
+merged_seq_samples_joined_cp1$Albumin[merged_seq_samples_joined_cp1$Albumin>60] = NA
+
+library(dplyr)
+library(janitor)
+library(lubridate)
+
+convert_to_date_custom <- function(x) {
+  if (grepl("^[0-9]{5}$", x)) {
+    # If it's an Excel date number
+    as.Date(as.numeric(x), origin = "1899-12-30")
+  } else if (grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", x)) {
+    # If it's a date in the format YYYY-MM-DD
+    as.Date(x)
+  } else if (grepl("^[0-9]{10}(\\.[0-9]+)?$", x)) {
+    # If it's a Unix timestamp (with optional milliseconds)
+    as.Date(as.POSIXct(as.numeric(x), origin = "1970-01-01", tz = "UTC"))
+  } else {
+    # Retain the original value if it doesn't match any pattern
+    x
+  }
+}
+# Create a new column for the converted dates
+merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>%
+  mutate(converted_date = sapply(introduction_1.examination_date, convert_to_date_custom))
+
+convert_dates1 <- function(date_vector) {
+  converted_dates <- sapply(date_vector, function(date) {
+    if (nchar(date) == 5 && all(is.numeric(date))) {  # Check if string has 5 characters and all characters are numeric
+      formatted_date <- as.Date(as.numeric(date), origin = "1970-01-01")
+      return(format(formatted_date, "%Y-%m-%d"))
+    } else {
+      return(date)  # Leave other formats unchanged
+    }
+  })
+  return(converted_dates)
+}
+
+# Apply the function to your column
+merged_seq_samples_joined_cp1$converted_date <- convert_dates1(merged_seq_samples_joined_cp1$converted_date)
 
 merge_num_new = dplyr::select_if(merged_seq_samples_joined_cp1, is.numeric)
 pdf("distbycenter_top25_newlist.pdf", width = 11)
 variables = colnames(merge_num_new)
 for(V in variables){
   if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
-  boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$center, main = V, ylab = V, xlab = "Ethnicity")
+  boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$center, main = V, ylab = V, xlab = "Centre")
 }
 
 dev.off()
@@ -5443,7 +5658,7 @@ library(dplyr)
 library(rlang)
 
 # Start the PDF device
-pdf("allscatterplots_top25_Jul3.pdf", width = 10, height = 10)
+pdf("allscatterplots_top25_Jul4.pdf", width = 10, height = 10)
 
 for (i in 1:(ncol(merge_num_new))) { 
   for (j in 1:(ncol(merge_num_new))) {
@@ -5481,4 +5696,205 @@ for (i in 1:(ncol(merge_num_new))) {
 dev.off()
 
 
-setdiff(finalsamplelist$V1, seq_samples$SeqID)
+setdiff(finalsamplelist$V1, seq_samples$SeqID) #checking if all samples in the new list were present in the bigger one
+
+test = read.table("SequencedSamples_top25_Jul3_new.txt", sep = '\t', header = T)
+
+
+# population and region ---------------------------------------------------
+
+region_provided = read_excel("Population-9871.xlsx")
+
+region_provided$Population = tolower(region_provided$Population)
+merged_seq_samples_joined_cp1$region_provided = NA
+
+merged_seq_samples_joined_cp1$region_provided[merged_seq_samples_joined_cp1$name_dob_1.ethnicity %in% region_provided$Population] <- region_provided$Region[match(merged_seq_samples_joined_cp1$name_dob_1.ethnicity[merged_seq_samples_joined_cp1$name_dob_1.ethnicity %in% region_provided$Population], region_provided$Population)]
+merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$region=="Western"] = "West"
+merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$region=="Northeast"] = "North-East"
+
+# # Sample dataframe
+# 
+# # Function to convert various date and datetime formats to Date
+# convert_to_date <- function(x) {
+#   if (grepl("^[0-9]{5}$", x)) {
+#     # If it's an Excel date number
+#     as.Date(as.numeric(x), origin = "1899-12-30")
+#   } else if (grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", x)) {
+#     # If it's a date in the format YYYY-MM-DD
+#     as.Date(x)
+#   } else if (grepl("^[0-9]{10}(\\.[0-9]+)?$", x)) {
+#     # If it's a Unix timestamp (with optional milliseconds)
+#     as.POSIXct(as.numeric(x), origin = "1970-01-01", tz = "UTC")
+#   } else {
+#     NA
+#   }
+# }
+# 
+# # Convert the date_column
+# merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>%
+#   mutate(introduction_1.examination_date = sapply(introduction_1.examination_date, convert_to_date))
+
+
+region_notmatching = merged_seq_samples_joined_cp1[merged_seq_samples_joined_cp1$region != merged_seq_samples_joined_cp1$region_provided,]
+region_notmatching = subset(region_notmatching, select = c("SeqID", "name_dob_1.ethnicity", "region", "region_provided"))
+
+
+# data based on ethnicity codes provided ----------------------------------
+
+merged_seq_samples_joined_cp1$name_dob_1.state[merged_seq_samples_joined_cp1$SeqID=="VQ80153956HQ"] = "karnataka"
+merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$SeqID=="VQ80153956HQ"] = "South"
+
+merged_seq_samples_joined_cp1$name_dob_1.state[merged_seq_samples_joined_cp1$SeqID=="DF48339419BZ"] = "delhi"
+merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$SeqID=="DF48339419BZ"] = "North"
+
+merged_seq_samples_joined_cp1$name_dob_1.state[merged_seq_samples_joined_cp1$SeqID=="LU73819286PP"] = "andra_pradesh"
+#merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$SeqID=="LU73819286PP"] = "North"
+
+mappingslist = read.table("seqid_mappings.txt", sep = '\t', header = T)
+merged_seq_samples_joined_cp1$ethnicity_mapping[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID] <- mappingslist$Mapping[match(merged_seq_samples_joined_cp1$SeqID[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
+#colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "mapping"] = "ethnicity_mapping"
+
+
+merged_seq_samples_joined_cp1$region_list[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID] <- mappingslist$region[match(merged_seq_samples_joined_cp1$SeqID[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
+
+region_check = merged_seq_samples_joined_cp1[merged_seq_samples_joined_cp1$region != merged_seq_samples_joined_cp1$region_list,]
+region_check = subset(merged_seq_samples_joined_cp1, select = c("SeqID", "name_dob_1.ethnicity", "name_dob_1.state", "region", "region_list"))
+region_check = region_check[region_check$region != region_check$region_list,]
+region_check = subset(region_check, region!="Unknown")
+region_check = subset(region_check, region_list!="Northeast")
+
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Dec 2, 2020"] = "2020-12-02"
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Dec 3, 2020"] = "2020-12-03"
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Dec 4, 2020"] = "2020-12-05"
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Feb 10, 2021"] = "2021-02-10"
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Mar 10, 2021"] = "2021-03-10"
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Mar 11, 2021"] = "2021-03-11"
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Mar 9, 2021"] = "2021-03-09"
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="NA"] = NA
+
+merged_seq_samples_joined_cp1$introduction_1.examination_date = gsub("/", "-", merged_seq_samples_joined_cp1$introduction_1.examination_date)
+
+library(parsedate)
+merged_seq_samples_joined_cp1$introduction_1.examination_date = as.Date(parse_date(merged_seq_samples_joined_cp1$introduction_1.examination_date))
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -converted_date)
+
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1941-11-12"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1946-07-06"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1951-04-01"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1959-06-03"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1969-04-28"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1974-04-29"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1977-12-15"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1979-12-08"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1982-12-08"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1985-07-09"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1990-02-15"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1999-07-13"] = NA
+merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1954-11-15"] = NA
+
+
+  merge_num_new = dplyr::select_if(merged_seq_samples_joined_cp1, is.numeric)
+  pdf("distbycenter_top25_newlist_coded.pdf", width = 11)
+  variables = colnames(merge_num_new)
+  for(V in variables){
+    if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
+    boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$center, main = V, ylab = V, xlab = "Centre")
+  }
+  
+  dev.off()
+  
+  # plotting boxplots against ethnicity -------------------------------------
+  pdf("distbyethnicity_top25_newlist_coded.pdf", width = 11)
+  variables = colnames(merge_num_new)
+  for(V in variables){
+    if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
+    boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$ethnicity_mapping, main = V, las = 2, cex.axis = 0.3, ylab = V, xlab = "Ethnicity code")
+  }
+  
+  dev.off()
+
+library(ggplot2)
+library(dplyr)
+library(rlang)
+
+# Start the PDF device
+pdf("allscatterplots_top25_Jul5.pdf", width = 10, height = 10)
+
+for (i in 1:(ncol(merge_num_new))) { 
+  for (j in 1:(ncol(merge_num_new))) {
+    if (i != j) {  # Avoid plotting a variable against itself
+      # Check for enough complete observations
+      if (sum(complete.cases(merge_num_new[, c(i, j)])) >= 3) {
+        # Print the variable names on screen
+        cat("Plotting:", names(merge_num_new)[i], "vs", names(merge_num_new)[j], "\n")
+        
+        # Calculate correlation coefficient
+        correlation <- cor.test(merge_num_new[,i], merge_num_new[,j], method = "spearman")$estimate
+        
+        # Create the plot
+        p <- ggplot(merge_num_new, aes_string(x = names(merge_num_new)[i], y = names(merge_num_new)[j])) +
+          geom_point(aes(color = factor(merged_seq_samples_joined_cp1$center))) +
+          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
+                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
+                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
+                                        "#000075")) +
+          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
+          labs(title = paste(names(merge_num_new)[i], "vs", names(merge_num_new)[j]))+theme_bw()
+        
+        # Print the plot
+        print(p)
+      } else {
+        warning("Not enough complete observations to calculate correlation for variables ", 
+                names(merge_num_new)[i], " and ", names(merge_num_new)[j])
+      }
+      
+    }
+  }
+}
+
+# Close the PDF device
+dev.off()
+
+
+# exporting with ethnicity codes ------------------------------------------
+
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -region)
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -region_provided)
+colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1)=="region_list"] = "region"
+
+
+#ODK missing
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "FZ96400519ZJ")
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "YH57309496DV")
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "NZ70398796FC")
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "OP71364516NH")
+
+
+#BBC missing
+merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>%
+  filter(!SeqID %in% c("JB19915796VG","IS45200288IT",
+                       "YV18489110PG","ZE92129191DF","UL02417306KC","DD08748516KN","OY26587204GI","ZP56763451UT",
+                       "WL70421785PU","LO18395070BP","EA28473439KJ","RC17320781GF","WJ10561545RM","AW32363210OO",
+                       "EG67169761DT","TV25372501TR","DL51915862KV","QA22761952KR","HE50067073ZK","ZU97364024NR",
+                       "VF53746037QZ","ZW24465850FJ","DZ60198489XQ","EG72076110XG","OJ68724196NQ","MI18571073LA",
+                       "IU24243367GU","LQ01971461LF","IV37799022TX","RK63273944CO","SE34442990SA","CG66748442ST",
+                       "FT09515720CG"))
+
+# merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp1[, !SeqID %in% c("JB19915796VG","IS45200288IT",
+#                      "YV18489110PG","ZE92129191DF","UL02417306KC","DD08748516KN","OY26587204GI","ZP56763451UT",
+#                      "WL70421785PU","LO18395070BP","EA28473439KJ","RC17320781GF","WJ10561545RM","AW32363210OO",
+#                      "EG67169761DT","TV25372501TR","DL51915862KV","QA22761952KR","HE50067073ZK","ZU97364024NR",
+#                      "VF53746037QZ","ZW24465850FJ","DZ60198489XQ","EG72076110XG","OJ68724196NQ","MI18571073LA",
+#                      "IU24243367GU","LQ01971461LF","IV37799022TX","RK63273944CO","SE34442990SA","CG66748442ST",
+#                      "FT09515720CG")]
+
+merged_seq_samples_joined_cp1_coded = merged_seq_samples_joined_cp1
+merged_seq_samples_joined_cp1_coded = subset(merged_seq_samples_joined_cp1_coded, select = -name_dob_1.ethnicity)
+
+merged_seq_samples_joined_cp1_coded2 = subset(merged_seq_samples_joined_cp1_coded, select = -ethnicity_mapping)
+write.table(merged_seq_samples_joined_cp1_coded, "GI_SequencedSamples_top25_Jul5_coded.txt", sep = '\t', row.names = F)
+write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_top25_Jul5.txt", sep = '\t', row.names = F)
+write.table(merged_seq_samples_joined_cp1_coded2, "GI_SequencedSamples_top25_Jul5_noethnicity.txt", sep = '\t', row.names = F)
+
+library(naniar)
+gg_miss_fct(x = merged_seq_samples_joined_cp1_coded, fct = center)+scale_fill_gradientn(colors = c("navy","gold", "white"))
