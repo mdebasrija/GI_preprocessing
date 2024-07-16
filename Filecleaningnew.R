@@ -1,3 +1,4 @@
+#load packages
 library(dplyr)
 library(tidyr)
 library(readxl)
@@ -7,23 +8,23 @@ library(ggprism)
 #library(ggsci)
 library(wesanderson)
 library(misty)
-#library(here)
+library(anytime)
+library(lubridate)
+library(xlsx)
+library(here)
+library(tidyverse)
+library(rlang)
+library(naniar)
+library(janitor)
+library(parsedate)
 options(scipen = 999)
 options(max.print = 100000)
-#path: /media/debasrija/New Volume/GenomeIndia/October17_2023/dataviz.R
+
+# Read in big merged file set --------
 ft = read.table("/media/debasrija/New Volume/GenomeIndia/January2024/merged_allsamples_Mar18_2024.txt", 
                 sep = "\t", header = TRUE, fill = TRUE, encoding = 'UTF-8')
 ft1 = read.table("/media/debasrija/New Volume/GenomeIndia/January2024/merged_allsamples_Mar18_2024.txt", 
                  sep = "\t", header = TRUE, fill = TRUE, encoding = 'latin1') #keep original copy
-
-# ft = ft[!ft$LocalID %in% SKIMS_to_remove,]
-# ft$CHOL.LDL_Ratio = as.numeric(ft$CHOL.LDL_Ratio)
-# RGCB_to_remove = ft$LocalID[which((ft$CHOL.LDL_Ratio>10))]
-# ft = ft[!ft$LocalID %in% RGCB_to_remove,]
-#ft_full = read.table("merged_allsamples_Oct17_2023.txt", sep = "~", header = TRUE, fill = TRUE, encoding = 'latin1')
-#ft
-#head(ft)
-#summary(ft)
 ft = ft[, -1]
 ft$center = gsub("\\/.*","", ft$LocalID)
 ft$center[ft$center %in% c("AI72957836GF", "AT96599369CY", "CO02368049ET", "CR98814111XY",
@@ -39,7 +40,6 @@ ft$center[ft$center %in% c("AI72957836GF", "AT96599369CY", "CO02368049ET", "CR98
 ft <- subset(ft, center != "SKIM")
 ft = subset(ft, select = -center.x)
 ft = subset(ft, select = -center.y)
-
 
 # Remove empty columns ----------------------------------------------------
 
@@ -97,7 +97,8 @@ ft = subset(ft, select = -Differential_Cell_Count)
 ft = subset(ft, select = -DC14)
 ft = subset(ft, select = -X.1)
 
-# Removing these values because they come from ILSB who sent a goo --------
+
+# removing ILSB blood counts (will be replaced) ---------------------------
 
 ft = subset(ft, select = -BASO...18)
 ft = subset(ft, select = -BASO...23)
@@ -113,7 +114,8 @@ ft = subset(ft, select = -NRBC)
 ft = subset(ft, select = -NRBC.)
 ft = subset(ft, select = -NRBC..1)
 
-# Removing unnecessary columns (again) ------------------------------------
+
+# removing more unnecessary columns ---------------------------------------
 
 ft = ft[,!names(ft) %in% c("Height", "Weight", "MalariaParasiteexaminationonthinSmear", "MalariaParasiteexaminationonthickSmear",
                            "No._of_Children", "Years_of_Education", "Occupation", "Medical_History", "Illness_Father",
@@ -121,8 +123,7 @@ ft = ft[,!names(ft) %in% c("Height", "Weight", "MalariaParasiteexaminationonthin
                            "Waist_Cm", "Hip_Cm", "DOB", "Barcode", "BP_Systolic", "BP_Diastolic","Languages_to_speak",
                            "Laungages_to_write")]
 
-
-# Convert to numeric ------------------------------------------------------
+# converting to numeric ---------------------------------------------------
 
 ft$FBS_Fasting_Blood_Glucose = as.numeric(ft$FBS_Fasting_Blood_Glucose)
 ft$HbA1C_Glycosylated_Haemoglobin = as.numeric(ft$HbA1C_Glycosylated_Haemoglobin)
@@ -238,8 +239,6 @@ ft$anthropometry.wasit_cir = as.numeric(ft$anthropometry.wasit_cir)
 ft$anthropometry.weight = as.numeric(ft$anthropometry.weight)
 ft$anthropometry.glucose_mg_dl = as.numeric(ft$anthropometry.glucose_mg_dl)
 
-
-
 # Inserting empty values --------------------------------------------------
 
 ft$PCV_Packed_Cell_Volume = as.numeric(ft$PCV_Packed_Cell_Volume)
@@ -279,8 +278,8 @@ ft = subset(ft, select = -A_G_Ratio)
 
 ft$ABG = as.numeric(ft$ABG)
 ft$Estimated_Average_Glucose <- ifelse(is.na(ft$Estimated_Average_Glucose),
-                                                       ft$ABG,
-                                                       ft$Estimated_Average_Glucose)
+                                       ft$ABG,
+                                       ft$Estimated_Average_Glucose)
 ft = subset(ft, select = -ABG)
 
 ft$TOTAL_LYMPHOCYTE_COUNT_1500.4000_cells.cu_mm = as.numeric(ft$TOTAL_LYMPHOCYTE_COUNT_1500.4000_cells.cu_mm)
@@ -313,7 +312,7 @@ ft$AbsoluteNeutrophilCount = as.numeric(ft$AbsoluteNeutrophilsCount)
 ft$Absolute_Neutrophil_Count = ifelse(is.na(ft$Absolute_Neutrophil_Count), ft$AbsoluteNeutrophilCount, ft$Absolute_Neutrophil_Count)
 ft = subset(ft, select = -AbsoluteNeutrophilCount)
 
-ft = subset(ft, select = -AbsoluteNeutrophilsCount)
+ft = subset(ft, select = -AbsoluteNeutrophilsCount)#no values could be added
 
 ft$AbsoluteMonocyteCount = as.numeric(ft$AbsoluteMonocyteCount)
 ft$Absolute_Monocyte_Count = ifelse(is.na(ft$Absolute_Monocyte_Count), ft$AbsoluteMonocyteCount, ft$Absolute_Monocyte_Count)
@@ -375,12 +374,12 @@ ft = subset(ft, select = -CALC)
 
 ft$Total_Calcium = as.numeric(ft$Total_Calcium)
 ft$Calcium = ifelse(is.na(ft$Calcium),
-                          ft$Total_Calcium, ft$Calcium)
+                    ft$Total_Calcium, ft$Calcium)
 ft = subset(ft, select = -Total_Calcium)
 
 ft$AlkalinePhosphatase = as.numeric(ft$AlkalinePhosphatase)
 ft$Alkaline_Phosphatase = ifelse(is.na(ft$Alkaline_Phosphatase),
-                          ft$AlkalinePhosphatase, ft$Alkaline_Phosphatase)
+                                 ft$AlkalinePhosphatase, ft$Alkaline_Phosphatase)
 ft = subset(ft, select = -AlkalinePhosphatase)
 
 ft$SGPT_ALT = as.numeric(ft$SGPT_ALT)
@@ -393,12 +392,12 @@ ft = subset(ft, select = -SGOT_AST)
 
 ft$APB..1 = as.numeric(ft$APB..1)
 ft$APB. = ifelse(is.na(ft$APB.),
-                              ft$APB..1, ft$APB.)
+                 ft$APB..1, ft$APB.)
 ft = subset(ft, select = -APB..1)
 
 ft$B.CR = as.numeric(ft$B.CR)
 ft$BUN_Sr_creatinine = ifelse(is.na(ft$BUN_Sr_creatinine),
-                                           ft$B.CR, ft$BUN_Sr_creatinine)
+                              ft$B.CR, ft$BUN_Sr_creatinine)
 ft = subset(ft, select = -B.CR)
 
 ft$VLDLCholesterol = as.numeric(ft$VLDLCholesterol)
@@ -517,9 +516,11 @@ ft = subset(ft, select = -IG)
 
 ft$IG_0.0.3 = as.numeric(ft$IG_0.0.3)
 ft$Immature_granulocyte_perc = ifelse(is.na(ft$Immature_granulocyte_perc),
-                     ft$IG_0.0.3, ft$Immature_granulocyte_perc)
+                                      ft$IG_0.0.3, ft$Immature_granulocyte_perc)
 ft = subset(ft, select = -IG_0.0.3)
 
+ft$Immature_granulocytes = ifelse(is.na(ft$Immature_granulocytes), ft$Immature_granulocyte, ft$Immature_granulocytes)
+ft = subset(ft, select = -Immature_granulocyte)
 
 ft$UreaSerum = as.numeric(ft$UreaSerum)
 ft$Urea = ifelse(is.na(ft$Urea), ft$UreaSerum, ft$Urea)
@@ -629,6 +630,7 @@ ft = subset(ft, select = -X.TSA)
 ft$Transferrin = as.numeric(ft$Transferrin)
 ft$Transferrin_Saturation = ifelse(is.na(ft$Transferrin_Saturation), ft$Transferrin, ft$Transferrin_Saturation)
 ft = subset(ft, select = -Transferrin)
+
 # renaming some columns ---------------------------------------------------
 
 
@@ -636,10 +638,11 @@ ft = subset(ft, select = -Transferrin)
 colnames(ft)[colnames(ft) == "anthropometry.wasit_cir"] ="anthropometry.waist_cir"
 colnames(ft)[colnames(ft) == "Calcium"] = "Total_Calcium"
 colnames(ft)[colnames(ft) == "TOTAL_GRANULOCYTE_COUNT_cu_mm"] = "Granulocyte_count"
-colnames(ft)[colnames(ft) == "Immature_granulocyte"] = "Immature_granulocytes"
-colnames(ft)[colnames(ft) == "Immature_granulocytes.1"] = "Immature_granulocytes"
+#colnames(ft)[colnames(ft) == "Immature_granulocyte"] = "Immature_granulocytes"
 
-# Ethnicity cleaning ------------------------------------------------------
+
+# ethnicity cleaning ------------------------------------------------------
+
 ft$name_dob_1.ethnicity=tolower(ft$name_dob_1.ethnicity)
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="")] = NA
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="na")] = NA
@@ -649,430 +652,325 @@ ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhoksa (uk)")]="bhoksa(u
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhoksa ( u.k)")]="bhoksa(uk)"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhoksa( u.k)")]="bhoksa(uk)"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhoksa(uk)")]="bhoksa"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="lingayath")]="lingayats"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="lingayat")]="lingayats"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki")]="vaidiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki brahmin")]="vaidiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki  brahmin")]="vaidiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki brahmin (mulukanad)")]="vaidiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki bramhin")]="vaidiki"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="lingayats")]="lingayath"
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="lingayat")]="lingayath"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki")]="vaidiki_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki brahmin")]="vaidiki_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki  brahmin")]="vaidiki_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vidiki brahmin (mulukanad)")]="vaidiki_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki bramhin")]="vaidiki_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki brahmin")]="vaidiki_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki bhramin")]="vaidiki_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki")]="vaidiki_brahmin"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="santal")]="santhal"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="santha")]="santhal"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="santali")]="santhal"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="santhali")]="santhal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="padiyachi")]="padayachi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nadoda rajput")]="rajput"
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="padiyachi")]="padayachi"
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nadoda rajput")]="rajput"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindu nadoda rajput")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rabha/patirabha")]="rabha"
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rabha/patirabha")]="rabha"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="  ")]=" "
 ft$name_dob_1.ethnicity = gsub("\\s+", " ", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharadwaj")]="bhardwaj"
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharadwaj")]="bhardwaj"
 condition = grepl("ravidas", ft$name_dob_1.ethnicity)
 ft$name_dob_1.ethnicity[condition] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition])
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidas/")]="ravidas"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidass")]="ravidas"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidasbudichae")]="ravidas"
-ft$name_dob_1.ethnicity = gsub("kennet", "kannet", ft$name_dob_1.ethnicity)
-condition1 = grepl("kannet", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition1] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition1])
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="iyengar father tamil iyengar mother mandyam iyengar")]="iyangar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kani kunj bharmin")]="kanyakubj"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kani")]="kanyakubj"
-condition2 = grepl("deshastha", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition2] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition2])
-condition3 = grepl("kokanastha", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition3] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition3])
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namasudra muslim")]="namasudra"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="converted namasudra")]="namasudra"
-condition4 = grepl("kanyakubj", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition4] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition4])
-ft$name_dob_1.ethnicity <- sub("^st\\/", "", ft$name_dob_1.ethnicity)
-condition4 = grepl("balmiki", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition4] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition4])
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kudmi mahato")]="kurmi mahato"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="st /khasi")]="khasi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khasi/st")]="khasi"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khasi /st")]="khasi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khasi/ st")]="khasi"
-
-condition5 = grepl("yadav", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition5] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition5])
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="yadav/")]="yadav"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="yadav/yatra")]="yadav"
-condition6 = grepl("saryupairin", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition6] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition6])
-condition7 = grepl("jat", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition7] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition7])
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jat(haryana)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jay (haryana)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jay of haryana")]="jat"
-ft$name_dob_1.ethnicity = sub("^mizo/(.*)", "mizo", ft$name_dob_1.ethnicity)
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="scheduled tribe/mizo/pawih/lai/khenglawt")]="mizo"
-ft$name_dob_1.ethnicity = sub("^maithil brahmin/(.*)", "maithil brahmin", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity = sub("^maithil brahmin /(.*)", "maithil brahmin", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithil brahmin (bihar)")]="maithil brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithili brahmin")]="maithil brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithil brahamin")]="maithil brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namibiar")]="nambiar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="koli hindu")]="koli"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindu koli")]="koli"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namboodiri")]="nambudri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nambudiri")]="nambudri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namboodiri brahmin")]="nambudri"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhoksa(uk)")]="bhoksa"
-ft$name_dob_1.ethnicity = sub(".*/(kashmiri/[^/]+)", "\\1", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashmir/muslim")]="kashmiri/muslim"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashmiri muslim")]="kashmiri/muslim"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kahmiri/muslim")]="kashmiri/muslim"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="syed/muslim/kashmiri")]="kashmiri/muslim"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhat/ kashmiri/muslim")]="kashmiri/muslim"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="syed kashmiri muslim")]="kashmiri/muslim"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhat/ kashmiri/pandit")]="kashmiri/pandit"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashmiri pandit")]="kashmiri/pandit"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjjar/bakarwal")]="bakarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mir/gujjar/muslim")]="gujjar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujar/bakarwal")]="bakarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujar/bakarwak")]="bakarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar/bakarwak")]="bakarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar/bakarwal")]="bakarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki bramhin")]="vaidiki"
-#ft$name_dob_1.ethnicity = sub("^gujjar(.*)", "gujjar", ft$name_dob_1.ethnicity) #CHECK THIS LINE
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gurjar")]="gujjar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="valmiki")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="valmiki/balmiki")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="male")]="mala"
-ft$name_dob_1.ethnicity = sub("gb", "garhwali brahmin", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity = sub("g b", "garhwali brahmin", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandiya")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity==" hajong")]="hajong"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="st) hajong")]="hajong"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity==" khasi")]="khasi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vakkaliga")]="vakaliga"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vokkaliga")]="vakaliga"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="scheduled tribe/mizo/pawih/lai/khenglawt")]="mizo"
-ft$name_dob_1.ethnicity = sub("^thakur(.*)", "thakur", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity = sub("^ahir(.*)", "ahir", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity = sub("^ansari(.*)", "ansari", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity = sub("^banjara(.*)", "banjara", ft$name_dob_1.ethnicity)
-
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhardwaj gn")]="bhardwaj garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="komma naidu")]="naidu"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kamma naidu")]="naidu"
-ft$name_dob_1.ethnicity = sub(".*iyengar", "iyangar", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="champawat (rajput)")]="rajput"
-ft$name_dob_1.ethnicity = sub(".*patidar", "patidar", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chichi/gujjar/muslim")]="gujjar"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bakarwal")]="bakarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhati")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhati(rajput)")]="rajput"
-ft$name_dob_1.ethnicity = sub(".*garhwali brahmin", "garhwali brahmin", ft$name_dob_1.ethnicity)
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhati")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khatri (punjab)")]="khatri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khatri ( punjab)")]="khatri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ghooser")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gharu")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="malhotra")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sonamwal")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jadu")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="malayalam")]="tiya"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="thiyya")]="tiya"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nad")]="nadar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="brahmin")]="rarhi brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rabha/patirabha")]="rabha"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kunnumal")]="tiya"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rarhi brahmin")]="rahri brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="pandit (brahmin) bharwaj gotra")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kushyap")]="garhwali brahmin" 
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mulakanadu")]="vaidiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="velanadu")]="vaidiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="telugu" & ft$center=='CCMB')]="chenchu"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="telugu" & ft$center=='CBRI')]="vaidiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindi" & ft$center=='CBRI')]="ravidas"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindi" & ft$center=='IGIB')]="kanyakubj"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="north indian")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujarati")]="rajput"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="lingayat")]="lingayats"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhardwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="barthwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharthwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharthwj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="muslim" & ft$center=='SKIM')]="kashmiri/muslim"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="muslim" & ft$center=='NIBG')]="namasudra"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bakarwal")]="gujjar and bakarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="pandit (brahmin) bhardwaj gotra")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar (haryana)")]="gujjar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar haryana")]="gujjar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar/ muslim")]="gujjar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar/muslim")]="gujjar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="deshastha")]="desastha"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="desastha")]="desastha brahmin"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="iyengar")]="iyangar"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanet")]="kannet"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="karn kaystha")]="karn kayastha"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanyakubj brahmin")]="kanyakubj brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kannauj")]="kanyakubj brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kani kubj brahmin")]="kanyakubj brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kani kunj")]="kanyakubj brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanyakubj")]="kanyakubj brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kokanastha")]="kokanastha brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kokanasth brahmin")]="kokanastha brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nambudri")]="nambudri brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryuparin")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki")]="vaidiki brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="adikarnataka")]="adi karnataka"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="odia brahmin")]="oriya brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="talpda koli")]="koli"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="leva patel")]="patidar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nabarangpur")]="gond"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanwar")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="agarwal")]="aggarwal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=='scheduled caste (jele)')] = 'namasudra'
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=='converted namasudra')] = 'namasudra'
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=='namasudra muslim')] = 'namasudra'
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=='saryuparin brahmin (up)')] = 'saryuparin brahmin'
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="prayagraj")]=NA
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shangrah")]="kannet"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyp")]="kashyap"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanat")]="kannet"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kannat")]="kannet"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kennat")]="kannet"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khasi/jaintia")]="khasi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saran(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="panchaar(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bapediya(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhadu(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhadyasar(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhirda(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chotiya(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="makwana vankar")]="vankar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindu vankar")]="vankar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kol")]="koli (tribe)"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="aggarwal")]="agrawal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="agarwal")]="agrawal"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="yadav/yaduvanshi")]="yadav"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="yadav/kashyap")]="yadav"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vanar rajput")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaghela rajput")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidasbnaden")]="ravidas"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidas(hr)")]="ravidas"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidas(up)")]="ravidas"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidas/dhusia")]="ravidas"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="audichya sahastra brahman")]="audichya sahastra"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="audichya sahastra pandya")]="audichya sahastra"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="audichya sahastra trividi")]="audichya sahastra"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ravidasbnaden")]="ravidas"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kennat")]="kannets"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanat")]="kannets"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kannat")]="kannets"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kannet")]="kannets"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kunnet")]="kannets"
+#ft$name_dob_1.ethnicity = gsub("kennet", "kannet", ft$name_dob_1.ethnicity)
+#condition1 = grepl("kannet", ft$name_dob_1.ethnicity)
+#ft$name_dob_1.ethnicity[condition1] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition1])
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="iyengar father tamil iyengar mother mandyam iyengar")]="iyangar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kani kubj brahmin")]="kanyakubj_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kani kunj")]="kanyakubj_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kannauj")]="kanyakubj_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanyakubj")]="kanyakubj_brahmin"
+
+ft$name_dob_1.ethnicity <- sub("agarwal.*", "agarwal", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity <- sub("agrawal.*", "agrawal", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity <- sub("audichya sahastra.*", "audichya sahastra", ft$name_dob_1.ethnicity)
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="aydichya sahastra")]="audichya sahastra"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="baigani")]="baiga"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bakmiki")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bheel")]="bhil"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bheel meena")]="bhil meena"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhil merna")]="bhil meena"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhilmeena")]="bhil meena"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhillmeena")]="bhil meena"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chik barai")]="chik baraik"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="champawat")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="champawat rajput")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="dabhi rajput")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="brahmins")]="brahmin"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramhin")]="brahmin"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramin")]="brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="danga(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gwala(jat)")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="marathi")]="maratha"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithili")]="maithil brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithili brahmin r")]="maithil brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mathil brahamin")]="maithil brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mal")]="mala"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="audichya sahastra")]="audichya_sahastra"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="desastha")]="deshastha_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kudmi mahato")]="kudmi_mahato"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kurmi mahato")]="kudmi_mahato"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="aagstya")]="saryuparin_brahmin"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khasi/jaintia")]="khasi"
+
+ft$name_dob_1.ethnicity <- sub("yadav/.*", "yadav", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity <- sub("paliwal.*", "paliwal_brahmin", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity <- sub("rajput.*", "rajput", ft$name_dob_1.ethnicity)
+
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="yadav/")]="yadav"
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="yadav/yatra")]="yadav"
+# condition6 = grepl("saryupairin", ft$name_dob_1.ethnicity)
+# ft$name_dob_1.ethnicity[condition6] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition6])
+# condition7 = grepl("jat", ft$name_dob_1.ethnicity)
+# ft$name_dob_1.ethnicity[condition7] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition7])
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jaat")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jat")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jata")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="panchaar(jat)")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhadyasar(jat)")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saran(jat)")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gwala(jat)")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chotiya(jat)")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="danga(jat)")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bison horn maria")]="bison_horn_maria"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="agarwal")]="aggarwal"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="agrawal")]="aggarwal"
+
+#ft$name_dob_1.ethnicity = sub("^mizo/(.*)", "mizo", ft$name_dob_1.ethnicity)
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="scheduled tribe/mizo/pawih/lai/khenglawt")]="mizo"
+#ft$name_dob_1.ethnicity = sub("^maithil brahmin/(.*)", "maithil brahmin", ft$name_dob_1.ethnicity)
+#fft$name_dob_1.ethnicity = sub("^maithil brahmin /(.*)", "maithil brahmin", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithil brahmin")]="maithili_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mathil brahamin")]="maithili_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithili")]="maithili_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithili brahmin")]="maithili_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maithili brahmin r")]="maithili_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rahri brahmin")]="rahri_brahmin"
+
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namibiar")]="nambiar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kol")]="koli (tribe)"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kolii")]="kolis"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="koli")]="kolis"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namboodiri bhramin")]="namboodari"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namboodri brahmin")]="namboodari"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nambudiris")]="namboodari"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nambudri")]="namboodari"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nambo")]="namboodari"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujar")]="gujjar"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar (hr)")]="gujjar"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gujjar (up)")]="gujjar"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gurjur")]="gujjar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namboodiri bhramin")]="nambudri brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namboodri bhramin")]="nambudri brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nambudiris")]="nambudri brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="namboodri brahmin")]="nambudri brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="paliwal")]="paliwal brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="paliwal bharmin")]="paliwal brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="patidar kadva")]="patidar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="patidar leuva")]="patidar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="prayan")]="parayan"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="raj banshi")]="rajbanshi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="koknastha brahmin")]="kokanastha brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rajput sodha")]="rajput"
+
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bakmiki")]="balmiki"
+
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="valmiki/balmiki")]="balmiki"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mal")]="mala"
+
+ft$name_dob_1.ethnicity = sub("sb", "saryuparin_brahmin", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity <- sub("saryuparin_brahmin.*", "saryuparin_brahmin", ft$name_dob_1.ethnicity)
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nabarangpur")]="gond"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vakaliga")]="vakkaliga"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ansari")]="ansari_sunni"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="adi karnataka")]="adikarnataka"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="iyyengar")]="iyengar"
+ft$name_dob_1.ethnicity = sub(".*iyyengars", "iyengar", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity = sub(".*iyyengar", "iyengar", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="iyangar")]="iyengar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="champawat rajput")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="champawat")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="dabhi rajput")]="rajput"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindu rajput")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaghela rajput")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vanar rajput")]="rajput"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jadeja rajput")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rajput gohil")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sidq")]="siddi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali barthwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garawali bharthwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali bharthwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="baradwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharatwaj")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali brahmin/sonak")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hakki pikki")]="hakkipikki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hakki pikiki")]="hakkipikki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khatri (hr")]="khatri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khatri (hr)")]="khatri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khatri (pb)")]="khatri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khatri(hr)")]="khatri"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kolii")]="koli"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kolis")]="koli"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindukoli")]="koli"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kunnet")]="kannet"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kallar calto")]="kallar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jaat")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jata")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kathelia")]="katheria"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kadva")]="kadva patel"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kadwa patel")]="kadva patel"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khasyap")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap gothara")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap gotra")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap gotra")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="levva patel")]="leva patel"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="meena (r.j)")]="meena (rajasthan)"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mund")]="munda"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="paniya")]="paniyan"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="s.p.b")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryupari")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryuparian")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb agastya")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb bharist")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb gotra")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb kasyap")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb shandayal")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb shandilya")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb/savaran")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garg gotra saryuparian")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhii meena")]="bhil meena"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="odia bramhin")]="oriya brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vaidiki bhramin")]="vaidiki brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vankar hindu")]="vankar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sodawat")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="solanki")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="abu road")]="bhil meena"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bachic")]="thakur"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="baghel")]="thakur"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="baigani")]="baiga"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhambu")]="jat"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bheel")]="bhil"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhii meena")]="bhil_meena"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhil merna")]="bhil_meena"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhil meena")]="bhil_meena"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bheel meena")]="bhil_meena"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhillmeena")]="bhil_meena"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="meena (rajasthan)")]="bhil_meena"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="meena (r.j)")]="bhil_meena"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bodh (spiti)")]="spiti"
 
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chauhan")]="thakur"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chou")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chudawat")]="rajput"
+#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="danta")]="saryuparin brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="dhola")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garg")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chik barai")]="chik_baraik"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chik baraik")]="chik_baraik"
 
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="dang")]="dangi"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="halu")]="halakki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="dogri")]="dogra"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nambo")]="nambudri brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="manipuri")]="meitei"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jamnagar")]="siddi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="abu road")]="bhil meena"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhargav/")]="kanyakubj brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhakota")]="agrawal"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="s.p.b")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryupari")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryuparian")]="saryuparin_brahmin"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="katheria")]="thakur"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kathelia")]="thakur"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="dongri bhil")]="dongri_bhil"
+ft$name_dob_1.ethnicity <- sub("khatri.*", "khatri_pb", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="laguni mishra")]="saryuparin brahmin"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ghatela")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="godara")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jat")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gotham")]="saryuparin_brahmin"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hakki pikki")]="hakkipikki"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hakki pikiki")]="hakkipikki"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhakota")]="aggarwal"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jaipur")]="rajput"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jongksha")]="khasi"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kadva patel")]="patidar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="leva patel")]="patidar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="patel")]="patidar"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rajesh")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashmiri")]="kashmiri/pandit"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kheaadla")]="balmiki"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sengar")]="thakur"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandilya")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandiyala")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandiyala gothara")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandyala")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandayal")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandilya")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shyandilya")]="garhwali brahmin"
 
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="aagstya")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bachic")]="thakur"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="baghel")]="thakur"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhambu")]="jat"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharist")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhrmin")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="brahmin")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramhin")]="vaidiki brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramin" & ft$LocalID == "CBRI/B/085310")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramin" & ft$LocalID == "CBRI/B/060193")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chauhan")]="thakur"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chou")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="chudawat")]="rajput"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="danta")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="dhola")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garg")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="ghatela")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="godara")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="gotham")]="saryuparin brahmin"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jain")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kalwaniya")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashik")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kaswan")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap kayastha")]="kayastha"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="katheria")]="thakur"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kayastha kasyap")]="kayastha"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khadav")]="jat"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kondal")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="koshti")]="lingayats"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kotinya")]="garhwali brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindu vankar")]="vankar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="hindukoli")]="kolis"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kallar calto")]="kallar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sidq")]="siddi"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="jamnagar")]="siddi"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="nad")]="nadar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="mund")]="munda"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khadav")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kondal")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="koshti")]="lingayath"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kotinya")]="garhwali_brahmin"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kurmi gangwar")]="thakur"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kushwaha")]="thakur"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="laguni mishra")]="saryuparin brahmin"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="lambani")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="meena (rajasthan)")]="bhil meena"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="niyogi brahmin")]="vaidiki brahmin"
+
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kadva patel")]="patidar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kadwa patel")]="patidar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kadva")]="patidar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="leva patel")]="patidar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="levva patel")]="patidar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="patel")]="patidar"
+ft$name_dob_1.ethnicity <- sub("patidar.*", "patidar", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rajesh")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="talpda koli")]="kolis"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kanwar")]="rajput"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kalwaniya")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashik")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kaswan")]="jats"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kheaadla")]="balmiki"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sengar")]="thakur"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shangrah")]="kannets"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="prayagraj")]="thakur"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kuruma")]="kuruman"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="maratha")]="marathas"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="marathi")]="marathas"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="makwana vankar")]="vankar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vankar hindu")]="vankar"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="niyogi brahmin")]="vaidiki_brahmin"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rathore")]="rajput"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rawat")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandhayala")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandheyalga")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saravana")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarvana")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarvaran")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarvaran gotra")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandayal gotra")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandil")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandilya gotra")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shaneliya")]="garhwali brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shring")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarveprave")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryaveparve")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryaveparvein")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="savaran")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sb gotham")]="saryuparin brahmin"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sc")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sshandaya")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandaya")]="saryuparin brahmin"
-#ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shring")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sodawat")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="solanki")]="rajput"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sravana")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sravuveparave bramin")]="saryuparin brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sahariya")]="saharia"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="tamil" & ft$LocalID=="CCMB/C/050026")]="nadar"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="tamil" & ft$LocalID=="CCMB/C/060080")]="parayan"
 ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="tomar")]="thakur"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vashist")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vastasya")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vastaya")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vastsa")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vats")]="saryuparin brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="tiya")]="thiya"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vashist")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vastasya")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vastaya")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vastsa")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="vats")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="manipuri")]="meitei"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kokanasth brahmin")]="konkonastha_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kokanastha")]="konkonastha_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="koknastha brahmin")]="konkonastha_brahmin"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="prayan")]="parayan"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="paniya")]="paniyan"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="raj banshi")]="rajbangshi"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="rajbanshi")]="rajbangshi"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="odia brahmin")]="oriya_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="odia bramhin")]="oriya_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="oriya brahmin")]="oriya_brahmin"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garawali bharthwaj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali barthwaj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali bharthwaj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali brahmin")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garhwali brahmin/sonak")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="baradwaj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="barthwaj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharatwaj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharthwaj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharthwj")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhargav/")]="kanyakubj_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharist")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bhrmin")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="garg gotra saryuparian")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramin" & ft$LocalID=="CBRI/B/060193")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramin" & ft$LocalID=="CBRI/B/085310")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramin" & ft$LocalID=="CBRI/B/085253")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="brahmins")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramhin" & ft$LocalID=="CBRI/B/035186")]="vaidiki_brahmin"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramhin")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="karn kayastha")]="karn_kayastha"
+
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap" & ft$LocalID=="CBRI/B/060191")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap" & ft$LocalID=="CBRI/B/085205")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap" & ft$LocalID=="CBRI/B/085217")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap" & ft$LocalID=="CBRI/B/085225")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap" & ft$LocalID=="CBRI/B/085205")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap" & ft$LocalID=="CBRI/B/085289")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap" & ft$LocalID=="CBRI/B/075134")]="kayastha"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap" & ft$LocalID=="CBRI/B/075136")]="kayastha"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap" & ft$LocalID=="CBRI/B/075140")]="kayastha"
 
 
-condition8 = grepl("agarwal", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition8] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition8])
-
-condition9 = grepl("agrawal", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity[condition9] <- sub(" .*", "", ft$name_dob_1.ethnicity[condition9])
-
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="agarwal")]="agrawal"
-
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity %in% c("0", "1", "2", "3", "4"))]=NA
-ft$name_dob_1.ethnicity = gsub("iyyengar", "iyangar", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity = gsub("iyangars", "iyangar", ft$name_dob_1.ethnicity)
-ft$name_dob_1.ethnicity = gsub(".*iyangar", "iyangar", ft$name_dob_1.ethnicity)
-
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bharist")]="saryuparin brahmin"
-ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="bramin")]="saryuparin brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap")]="kayastha"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap gotra")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kasyap kayastha")]="kayastha"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kayastha kasyap")]="kayastha"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="khasyap")]="kayastha"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyp")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="kashyap gothara")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandhayala")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandheyalga")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandilya")]="garhwali_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandiyala")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandiyala gothara")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sandyala")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saravana")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarvana")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarvaran")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarvaran gotra")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarveprave")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sarvaran gotra")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryaveparve")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryaveparvein")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryuparin brahmin")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="saryuparin")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="savaran")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandaya")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandayal")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandayal gotra")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandil")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandilya")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shandilya gotra")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shaneliya")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shring")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="shyandilya")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sravana")]="saryuparin_brahmin"
+ft$name_dob_1.ethnicity[which(ft$name_dob_1.ethnicity=="sravuveparave bramin")]="saryuparin_brahmin"
 
 # Adding regions ----------------------------------------------------------
 
 ft$name_dob_1.state = tolower(ft$name_dob_1.state)
 ft$name_dob_1.state[which(ft$name_dob_1.state=='others')] = NA
-ft$name_dob_1.state[which(ft$name_dob_1.state=='NA')] = NA
+#ft$name_dob_1.state[which(ft$name_dob_1.state=='NA')] = NA
 ft$name_dob_1.state = ifelse(is.na(ft$name_dob_1.state),ft$name_dob_1.other_state, ft$name_dob_1.state)
 
 ft = subset(ft, select = -name_dob_1.other_state)
@@ -1080,19 +978,19 @@ ft$name_dob_1.state = tolower(ft$name_dob_1.state)
 
 ft$name_dob_1.state[ft$name_dob_1.state=="bangalore"] = "karnataka"
 ft$name_dob_1.state[ft$name_dob_1.state=="bangalore, karnataka"] = "karnataka"
-ft$name_dob_1.state[ft$name_dob_1.state=="chennai"] = "tamil_nadu"
-ft$name_dob_1.state[ft$name_dob_1.state=="cheruanchary, kerala"] = "kerala"
-ft$name_dob_1.state[ft$name_dob_1.state=="kadirur, kerala"] = "kerala"
-ft$name_dob_1.state[ft$name_dob_1.state=="kalambur"] = "tamil_nadu"
-ft$name_dob_1.state[ft$name_dob_1.state=="kanchipuram"] = "tamil_nadu"
-ft$name_dob_1.state[ft$name_dob_1.state=="karvatenagaram, chittur dustrict, andra pradesh"] = "andra_pradesh"
-ft$name_dob_1.state[ft$name_dob_1.state=="kottayam, kerala"] = "kerala"
+# ft$name_dob_1.state[ft$name_dob_1.state=="chennai"] = "tamil_nadu"
+# ft$name_dob_1.state[ft$name_dob_1.state=="cheruanchary, kerala"] = "kerala"
+# ft$name_dob_1.state[ft$name_dob_1.state=="kadirur, kerala"] = "kerala"
+# ft$name_dob_1.state[ft$name_dob_1.state=="kalambur"] = "tamil_nadu"
+# ft$name_dob_1.state[ft$name_dob_1.state=="kanchipuram"] = "tamil_nadu"
+# ft$name_dob_1.state[ft$name_dob_1.state=="karvatenagaram, chittur dustrict, andra pradesh"] = "andra_pradesh"
+# ft$name_dob_1.state[ft$name_dob_1.state=="kottayam, kerala"] = "kerala"
 ft$name_dob_1.state[ft$name_dob_1.state=="melkote, mandya district, , karnataka"] = "karnataka"
-ft$name_dob_1.state[ft$name_dob_1.state=="muzaffarpur , bihar"] = "bihar"
-ft$name_dob_1.state[ft$name_dob_1.state=="ochira ,kerala"] = "kerala"
-ft$name_dob_1.state[ft$name_dob_1.state=="ochira, kerala"] = "kerala"
+#ft$name_dob_1.state[ft$name_dob_1.state=="muzaffarpur , bihar"] = "bihar"
+# ft$name_dob_1.state[ft$name_dob_1.state=="ochira ,kerala"] = "kerala"
+# ft$name_dob_1.state[ft$name_dob_1.state=="ochira, kerala"] = "kerala"
 ft$name_dob_1.state[ft$name_dob_1.state=="telengana"] = "telangana"
-ft$name_dob_1.state[ft$name_dob_1.state=="tellichrry, kerala"] = "kerala"
+#ft$name_dob_1.state[ft$name_dob_1.state=="tellichrry, kerala"] = "kerala"
 ft$name_dob_1.state[ft$name_dob_1.state=="yeliyur, karnataka"] = "karnataka"
 ft$name_dob_1.state[ft$name_dob_1.state=="dalasanur"] = "karnataka"
 ft$name_dob_1.state[ft$name_dob_1.state=="gdm"] = "karnataka"
@@ -1112,42 +1010,54 @@ ft$name_dob_1.state[ft$name_dob_1.state=="kuppahalli (v)"] = "karnataka"
 ft$name_dob_1.state[ft$name_dob_1.state=="valageranahalli"] = "karnataka"
 ft$name_dob_1.state[ft$name_dob_1.state=="vgh"] = "karnataka"
 
-
+ft$name_dob_1.state[ft$LocalID=="CBRI/B/035016"] = "karnataka"
+ft$name_dob_1.state[ft$LocalID=="CBRI/B/045084"] = "himachal_pradesh"
+ft$name_dob_1.state[ft$LocalID=="CBRI/B/075044"] = "uttar_pradesh"
+ft$name_dob_1.state[ft$LocalID=="CBRI/B/055167"] = "rajasthan"
+ft$name_dob_1.state[ft$LocalID=="AIIM/J/021071"] = "rajasthan"
+ft$name_dob_1.state[ft$LocalID=="CCMB/C/030294"] = "andra_pradesh"
+ft$name_dob_1.state[ft$LocalID=="CCMB/C/030270"] = "andra_pradesh"
+ft$name_dob_1.state[ft$LocalID=="CCMB/C/090111"] = "andra_pradesh"
+ft$name_dob_1.state[ft$LocalID=="RGCB/L/005262"] = "kerala"
+ft$name_dob_1.state[ft$LocalID=="MZUA/I/015039"] = "assam"
+ft$name_dob_1.state[ft$LocalID=="ILSB/H/000081"] = "orissa"
+ft$name_dob_1.state[ft$LocalID=="ILSB/H/000238"] = "orissa"
+ft$name_dob_1.state[ft$LocalID=="ILSB/H/000351"] = "orissa"
+ft$name_dob_1.state[ft$LocalID=="GBRC/D/030088"] = "gujarat"
 
 ft$region = ifelse(ft$name_dob_1.state %in% c('andra_pradesh', 'karnataka', 'kerala','tamil_nadu', 'telangana'), "South", 
-                   ifelse(ft$name_dob_1.state %in% c("arunachal_pradesh","assam", "manipur", "meghalaya", "mizoram"), "Northeast", 
+                   ifelse(ft$name_dob_1.state %in% c("arunachal_pradesh","assam", "manipur", "meghalaya", "mizoram"), "North-East", 
                           ifelse(ft$name_dob_1.state %in% c("bihar", "jharkhand", "orissa", "west_bengal", "sikkim"), "East", 
                                  ifelse(ft$name_dob_1.state %in% c("haryana", "himachal_pradesh", "jammu_kashmir", "punjab", "rajasthan", "Delhi", "delhi", "New Delhi", "new delhi"), "North", 
-                                        ifelse(ft$name_dob_1.state %in% c("gujarat", "maharashtra"), "Western",
+                                        ifelse(ft$name_dob_1.state %in% c("gujarat", "maharashtra"), "West",
                                                ifelse(ft$name_dob_1.state %in% c("madya_pradesh","chhattisgarh", "uttaranchal","uttar_pradesh"), "Central","Unknown"))))))
-
-
 
 # Smoking status cleaning, marital status -------------------------------------------------
 
 ft$smoking_tobacco_alcohol.alcohol_status = tolower(ft$smoking_tobacco_alcohol.alcohol_status)
 ft$smoking_tobacco_alcohol.chewing_tobacco_status = tolower(ft$smoking_tobacco_alcohol.chewing_tobacco_status)
 ft$smoking_tobacco_alcohol.smoking_status = tolower(ft$smoking_tobacco_alcohol.smoking_status)
-ft$smoking_tobacco_alcohol.alcohol_status[which(ft$smoking_tobacco_alcohol.alcohol_status=="")]=NA
+#ft$smoking_tobacco_alcohol.alcohol_status[which(ft$smoking_tobacco_alcohol.alcohol_status=="")]=NA
 ft$smoking_tobacco_alcohol.alcohol_status[which(ft$smoking_tobacco_alcohol.alcohol_status=="yes")]="current"
 ft$smoking_tobacco_alcohol.alcohol_status[which(ft$smoking_tobacco_alcohol.alcohol_status=="0")]="never"
 ft$smoking_tobacco_alcohol.alcohol_status[which(ft$smoking_tobacco_alcohol.alcohol_status=="no")]="never"
-ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="")]=NA
+#ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="")]=NA
 ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="yes")]="current"
-ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="")]=NA
-ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="0")]="never"
-ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="currently_abstinent")]="past"
-ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="currently_using")]="current"
-ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="0")]="past"
+ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="0")]="never"
 ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="currently_abstinent")]="past"
 ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="currently_using")]="current"
+#ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="")]=NA
+#ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="0")]="never"
+#ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="currently_abstinent")]="past"
+#ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="currently_using")]="current"
 ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="yes")]="current"
-ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=="")]=NA
+#ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=="")]=NA
 ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=="currently_currently_married")]='currently_married'
 ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=='never_currently_currently_married')] = NA
 ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=='Un-currently_married')] = "currently_married"
-ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=='cohabiting')] = "never_married"
 ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=='0')] = "never_married"
+ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=='cohabiting')] = "never_married"
+
 
 # History of illness cleaning ---------------------------------------------
 
@@ -1175,6 +1085,7 @@ ft$history_illness.history_illness_self[which(ft$history_illness.history_illness
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="nill")]=NA
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="nio")]=NA
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="no")]=NA
+ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="na")]=NA
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="none")]=NA
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="none,,,")]=NA
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="none(")]=NA
@@ -1210,70 +1121,187 @@ ft$history_illness.name_medication[ft$history_illness.name_medication=="Na"] = N
 ft$history_illness.name_medication[ft$history_illness.name_medication=="No"] = NA
 ft$history_illness.name_medication[ft$history_illness.name_medication=="Na"] = NA
 
-# Age calculation - calc_age and calc1 ------------------------------------
+
+# Age calculation - age and age_withBBC ------------------------------------
 ft$name_dob_1.dob[ft$name_dob_1.dob == ""] = NA
 ft$introduction_1.examination_date[ft$introduction_1.examination_date == ""] = NA
-ft$name_dob_1.dob = gsub(",", "", ft$name_dob_1.dob)
-ft$introduction_1.examination_date = gsub(",", "", ft$introduction_1.examination_date)
+#ft$name_dob_1.dob = gsub(",", "", ft$name_dob_1.dob)
+ft$name_dob_1.dob = gsub("/", "-", ft$name_dob_1.dob)
+ft$name_dob_1.dob[as.numeric(ft$name_dob_1.dob)<0] = NA
+#ft$introduction_1.examination_date = gsub(",", "", ft$introduction_1.examination_date)
+ft$introduction_1.examination_date = gsub("/", "-", ft$introduction_1.examination_date)
 
 library(anytime)
 library(lubridate)
 
-#ft$dob1 = ft$name_dob_1.dob
-
-parse_and_convert_date <- function(date_str) {
-  if (grepl("^\\d{4}-\\d{2}-\\d{2}$", date_str)) {
-    # If it's in "yyyy-mm-dd" format, just return it
-    return(date_str)
-  } else if (grepl("^\\d{2}-\\d{2}-\\d{4}$", date_str)) {
-    # If it's in "dd-mm-yyyy" format, convert it to "yyyy-mm-dd"
-    parsed_date <- dmy(date_str)
-    return(as.character(parsed_date, format = "%Y-%m-%d"))
+ft$name_dob_1.dob <- sapply(ft$name_dob_1.dob, function(date) {
+  if (nchar(date) == 10 && grepl("^\\d{2}-\\d{2}-\\d{4}$", date)) {
+    # If it's in "dd-mm-yyyy" or "mm-dd-yyyy" format, try both and check validity
+    parsed_date_dmy <- dmy(date)
+    parsed_date_mdy <- mdy(date)
+    
+    if (!is.na(parsed_date_dmy) && !is.na(parsed_date_mdy)) {
+      # Both are valid, you need to choose a strategy here
+      # For example, prefer one format over the other
+      return(as.character(parsed_date_dmy, format = "%Y-%m-%d"))
+    } else if (!is.na(parsed_date_dmy)) {
+      return(as.character(parsed_date_dmy, format = "%Y-%m-%d"))
+    } else if (!is.na(parsed_date_mdy)) {
+      return(as.character(parsed_date_mdy, format = "%Y-%m-%d"))
+    } else {
+      return(date)  # Date couldn't be parsed
+    }
   } else {
-    return(NA)  # Date couldn't be parsed
+    return(date)
   }
-}
+})
 
-# Standardize the date format
-ft <- ft %>%
-  mutate(name_dob_1.dob = sapply(name_dob_1.dob, parse_and_convert_date))
+ft$name_dob_1.dob <- sapply(ft$name_dob_1.dob, function(date) {
+  if (nchar(date) == 9 && grepl("^\\d{1}-\\d{2}-\\d{4}$", date)) {  # Check if string has 5 characters and all characters are numeric
+    date <- mdy(date)
+    return(as.character(date, format = "%Y-%m-%d"))
+  } else if (nchar(date)== 9 && grepl("^[0-9]{9}$", date)) {
+    return(as.Date(as.POSIXct(as.numeric(date), origin = "1970-01-01", tz = "UTC")))
+  } else {
+    return(date)
+  }
+})
 
-#ft = subset(ft, select = -dob1)
+ft$name_dob_1.dob <- sapply(ft$name_dob_1.dob, function(date) {
+  if (nchar(date) == 8 && grepl("^[0-9]{8}$", date)) {  # Check if string has 5 characters and all characters are numeric
+    return(as.Date(as.POSIXct(as.numeric(date), origin = "1970-01-01", tz = "UTC")))
+  } else {
+    return(date)
+  }
+})
 
-ft$introduction_1.examination_date[which(ft$introduction_1.examination_date=="Feb 10 2021")] = "2021-02-10"
+ft$name_dob_1.dob <- sapply(ft$name_dob_1.dob, function(date) {
+  if (nchar(date) == 5 && grepl("^[0-9]+$", date)) {  # Check if string has 5 characters and all characters are numeric
+    formatted_date <- as.Date(as.numeric(date), origin = "1899-12-30")
+    return(format(formatted_date, "%Y-%m-%d"))
+  } else {
+    return(date)
+  }
+})
 
-#ft$intro1 = ft$introduction_1.examination_date
+ft$name_dob_1.dob <- sapply(ft$name_dob_1.dob, function(date) {
+  if (nchar(date) == 4 && grepl("^[0-9]+$", date)) {  # Check if string has 5 characters and all characters are numeric
+    formatted_date <- as.Date(as.numeric(date), origin = "1899-12-30")
+    return(format(formatted_date, "%Y-%m-%d"))
+  } else {
+    return(date)
+  }
+})
 
-# Define a custom function to parse dates and convert to "yyyy-mm-dd" format
-parse_and_convert_date <- function(date_str) {
+ft$name_dob_1.dob <- sapply(ft$name_dob_1.dob, function(date) {
+  if (nchar(date) == 3 && grepl("^[0-9]+$", date)) {  # Check if string has 5 characters and all characters are numeric
+    formatted_date <- as.Date(as.numeric(date), origin = "1899-12-30")
+    return(format(formatted_date, "%Y-%m-%d"))
+  } else {
+    return(date)
+  }
+})
+
+# parse_and_convert_date <- function(date_str) {
+#   if (grepl("^\\d{4}-\\d{2}-\\d{2}$", date_str)) {
+#     # If it's in "yyyy-mm-dd" format, just return it
+#     return(date_str)
+#   } else if (grepl("^\\d{2}-\\d{2}-\\d{4}$", date_str)) {
+#     # If it's in "dd-mm-yyyy" format, convert it to "yyyy-mm-dd"
+#     parsed_date <- dmy(date_str)
+#     return(as.character(parsed_date, format = "%Y-%m-%d"))
+#   } else if (grepl("^\\d{1}-\\d{2}-\\d{4}$", date_str)) {
+#     # If it's in "dd-mm-yyyy" format, convert it to "yyyy-mm-dd"
+#     parsed_date <- mdy(date_str)
+#     return(as.character(parsed_date, format = "%Y-%m-%d"))
+#   } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{4}$", date_str)) {
+#     # If it's in "dd-bb-yyyy" format, convert it to "yyyy-mm-dd"
+#     parsed_date <- dmy(date_str)
+#     return(as.character(parsed_date, format = "%Y-%m-%d"))
+#   } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{2}$", date_str)) {
+#     # If it's in "dd-bb-yy" format, convert it to "yyyy-mm-dd"
+#     parsed_date <- dmy(date_str)
+#     return(as.character(parsed_date, format = "%Y-%m-%d"))
+#   } else if (grepl("^[0-9]{5}$", date_str)) {
+#     # If it's an Excel date number
+#     return(as.Date(as.numeric(date_str), origin = "1899-12-30"))
+#   } else if (grepl("^[0-9]{10}$", date_str)) {
+#     # If it's a Unix timestamp (with optional milliseconds)
+#     return(as.Date(as.POSIXct(as.numeric(date_str), origin = "1970-01-01", tz = "UTC")) )
+#   } else if (grepl("^[0-9]{9}$", date_str)) {
+#     return(as.Date(as.POSIXct(as.numeric(date_str), origin = "1970-01-01", tz = "UTC")))
+#   } else if (grepl("^[0-9]{8}$", date_str)) {
+#     return(as.Date(as.POSIXct(as.numeric(date_str), origin = "1970-01-01", tz = "UTC")))
+#   } else {
+#     return(date_str)  # Date couldn't be parsed
+#   }
+# }
+# 
+# # Standardize the date format
+# ft <- ft %>%
+#   mutate(name_dob_1.dob = sapply(name_dob_1.dob, parse_and_convert_date))
+
+# library(parsedate)
+# ft$name_dob_1.dob = as.Date(parse_date(ft$name_dob_1.dob)) 
+
+parse_and_convert_date1 <- function(date_str) {
   if (grepl("^\\d{4}-\\d{2}-\\d{2}$", date_str)) {
     # If it's in "yyyy-mm-dd" format, just return it
     return(date_str)
   } else if (grepl("^\\d{2}-\\d{2}-\\d{4}$", date_str)) {
-    # If it's in "dd-mm-yyyy" format, convert it to "yyyy-mm-dd"
-    parsed_date <- dmy(date_str)
+    # If it's in "dd-mm-yyyy" or "mm-dd-yyyy" format, try both and check validity
+    parsed_date_dmy <- dmy(date_str)
+    parsed_date_mdy <- mdy(date_str)
+    
+    if (!is.na(parsed_date_dmy) && !is.na(parsed_date_mdy)) {
+      # Both are valid, you need to choose a strategy here
+      # For example, prefer one format over the other
+      return(as.character(parsed_date_dmy, format = "%Y-%m-%d"))
+    } else if (!is.na(parsed_date_dmy)) {
+      return(as.character(parsed_date_dmy, format = "%Y-%m-%d"))
+    } else if (!is.na(parsed_date_mdy)) {
+      return(as.character(parsed_date_mdy, format = "%Y-%m-%d"))
+    } else {
+      return(date_str)  # Date couldn't be parsed
+    }
+  } else if (grepl("^\\d{1}-\\d{2}-\\d{4}$", date_str)) {
+    # If it's in "m-dd-yyyy" format, convert it to "yyyy-mm-dd"
+    parsed_date <- mdy(date_str)
     return(as.character(parsed_date, format = "%Y-%m-%d"))
   } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{4}$", date_str)) {
-    # If it's in "dd-bb-yyyy" format, convert it to "yyyy-mm-dd"
+    # If it's in "dd-bbb-yyyy" format, convert it to "yyyy-mm-dd"
     parsed_date <- dmy(date_str)
     return(as.character(parsed_date, format = "%Y-%m-%d"))
   } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{2}$", date_str)) {
-    # If it's in "dd-bb-yy" format, convert it to "yyyy-mm-dd"
+    # If it's in "dd-bbb-yy" format, convert it to "yyyy-mm-dd"
     parsed_date <- dmy(date_str)
     return(as.character(parsed_date, format = "%Y-%m-%d"))
+  } else if (grepl("^[0-9]{10}$", date_str)) {
+    # If it's a Unix timestamp (with optional milliseconds)
+    as.Date(as.POSIXct(as.numeric(date_str), origin = "1970-01-01", tz = "UTC")) 
   } else {
-    return(NA)  # Date couldn't be parsed
+    return(date_str)  # Date couldn't be parsed
   }
 }
 
 # Standardize the date format
 ft <- ft %>%
-  mutate(introduction_1.examination_date = sapply(introduction_1.examination_date, parse_and_convert_date))
+  mutate(introduction_1.examination_date = sapply(introduction_1.examination_date, parse_and_convert_date1))
 
-#ft = subset(ft, select = -intro1)
+ft$introduction_1.examination_date <- sapply(ft$introduction_1.examination_date, function(date) {
+  if (nchar(date) == 5 && grepl("^[0-9]+$", date)) {  # Check if string has 5 characters and all characters are numeric
+    formatted_date <- as.Date(as.numeric(date), origin = "1899-12-30")
+    return(format(formatted_date, "%Y-%m-%d"))
+  } else {
+    return(date)
+  }
+})
 
-ft$calc_age =trunc((ft$name_dob_1.dob %--% ft$introduction_1.examination_date) / years(1))
-sum(is.na(ft$calc_age))
+
+
+ft$age =trunc((ft$name_dob_1.dob %--% ft$introduction_1.examination_date) / years(1))
+ft$age[ft$age<18] = NA
+#sum(is.na(ft$age))
 #ft$age_on_interview = floor(as.numeric(ft$name_dob_1.age_on_interview))
 #ft$name_dob_1.dob[ft$name_dob_1.dob == ""] = NA
 # plot(ft$name_dob_1.approx_age ~ ft$age_on_interview, ylim = c(0, 100), col = as.factor(ft$name_dob_1.gender))
@@ -1281,28 +1309,40 @@ sum(is.na(ft$calc_age))
 # plot(ft$calc_age ~ ft$name_dob_1.approx_age, xlim = c(0, 100))
 # abline(0, 1)
 #library(dplyr)
-agevec = select(ft, LocalID, Age, name_dob_1.dob, calc_age, name_dob_1.gender, name_dob_1.year_of_birth, name_dob_1.age_on_interview, name_dob_1.approx_age, introduction_1.examination_date)
-#agevec$age_on_interview[agevec$age_on_interview == ""] = NA
-agevec$Age[agevec$Age == ""] = NA
-agevec$name_dob_1.dob[agevec$name_dob_1.dob == ""] = NA
-agevec$calc_age[agevec$calc_age == ""] = NA
-agevec$name_dob_1.year_of_birth[agevec$name_dob_1.year_of_birth == ""] = NA
-agevec$name_dob_1.age_on_interview[agevec$name_dob_1.age_on_interview == ""] = NA
-agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age == ""] = NA
-agevec$introduction_1.examination_date[agevec$introduction_1.examination_date == ""] = NA
-agevec$calc_age[agevec$calc_age == 0] = NA
-agevec$calc_age[agevec$calc_age < 18] = NA
-agevec$name_dob_1.age_on_interview[agevec$name_dob_1.age_on_interview <18] = NA
-agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age<18] = NA
-#agevec$age_on_interview[agevec$age_on_interview <18] = NA
-agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age > 250] = NA
-agevec = agevec[!duplicated(agevec$LocalID),]
-#AGE MISSING VALUE IMPUTATION - CALC AGE AND AGE ON INTERVIEW
-colSums(is.na(agevec))
-agevec$calc_age = ifelse(is.na(agevec$calc_age), agevec$name_dob_1.age_on_interview, agevec$calc_age)
-agevec$calc_age <- ifelse(is.na(agevec$calc_age), agevec$name_dob_1.approx_age, agevec$calc_age)
-agevec$calc_age[agevec$calc_age < 18] = NA
-colSums(is.na(agevec))
+# agevec = subset(ft, select = c("LocalID", "Age", "name_dob_1.dob", "age", "name_dob_1.gender", "name_dob_1.year_of_birth", "name_dob_1.age_on_interview", "name_dob_1.approx_age", "introduction_1.examination_date"))
+# #agevec$age_on_interview[agevec$age_on_interview == ""] = NA
+# agevec$Age[agevec$Age == ""] = NA
+# agevec$Age[agevec$Age == "F"] = NA
+# agevec$Age[agevec$Age == "M"] = NA
+# agevec$Age[agevec$Age == "NULL"] = NA
+# 
+# agevec$Age = gsub("/M", "", agevec$Age)
+# agevec$Age = gsub("/ M", "", agevec$Age)
+# agevec$Age = gsub("/F", "", agevec$Age)
+# agevec$Age = gsub("Y", "", agevec$Age)
+# agevec$Age = trimws(agevec$Age)
+# 
+# agevec$Age = abs(as.numeric(agevec$Age))
+
+
+#agevec$name_dob_1.dob[agevec$name_dob_1.dob == ""] = NA
+#agevec$age[agevec$calc_age == ""] = NA
+#agevec$name_dob_1.year_of_birth[agevec$name_dob_1.year_of_birth == ""] = NA
+#agevec$name_dob_1.age_on_interview[agevec$name_dob_1.age_on_interview == ""] = NA
+#agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age == ""] = NA
+#agevec$introduction_1.examination_date[agevec$introduction_1.examination_date == ""] = NA
+#agevec$age[agevec$age < 18] = NA
+# agevec$name_dob_1.age_on_interview[agevec$name_dob_1.age_on_interview <18] = NA
+# agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age<18] = NA
+# #agevec$age_on_interview[agevec$age_on_interview <18] = NA
+# agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age > 250] = NA
+# agevec = agevec[!duplicated(agevec$LocalID),]
+# #AGE MISSING VALUE IMPUTATION - CALC AGE AND AGE ON INTERVIEW
+# colSums(is.na(agevec))
+# agevec$calc_age = ifelse(is.na(agevec$calc_age), agevec$name_dob_1.age_on_interview, agevec$calc_age)
+# agevec$calc_age <- ifelse(is.na(agevec$calc_age), agevec$name_dob_1.approx_age, agevec$calc_age)
+# agevec$calc_age[agevec$calc_age < 18] = NA
+# colSums(is.na(agevec))
 
 # ft$Age = as.numeric(ft$Age)
 # ft$Age[ft$Age<18] = NA
@@ -1315,67 +1355,79 @@ colSums(is.na(agevec))
 # plt1
 # 
 #putting into original dataset
-ft$calc_age = agevec[match(ft$LocalID, agevec$LocalID), ]$calc_age
+ft$Age[ft$Age == ""] = NA
+ft$Age[ft$Age == "F"] = NA
+ft$Age[ft$Age == "M"] = NA
+ft$Age[ft$Age == "NULL"] = NA
+
+ft$Age = gsub("/M", "", ft$Age)
+ft$Age = gsub("/ M", "", ft$Age)
+ft$Age = gsub("/F", "", ft$Age)
+ft$Age = gsub("Y", "", ft$Age)
+ft$Age = trimws(ft$Age)
+
+ft$Age = (as.numeric(ft$Age))
+
+
+#ft$calc_age = agevec[match(ft$LocalID, agevec$LocalID), ]$calc_age
 ft$name_dob_1.age_on_interview[ft$name_dob_1.age_on_interview<18] = NA
-ft$calc_age = ifelse(is.na(ft$calc_age), ft$name_dob_1.age_on_interview, ft$calc_age)
+ft$age = ifelse(is.na(ft$age), ft$name_dob_1.age_on_interview, ft$age)
 ft$name_dob_1.approx_age[ft$name_dob_1.approx_age<18] = NA
 ft$name_dob_1.approx_age[ft$name_dob_1.approx_age>250] = NA
-ft$calc_age = ifelse(is.na(ft$calc_age), ft$name_dob_1.approx_age, ft$calc_age)
+ft$age = ifelse(is.na(ft$age), ft$name_dob_1.approx_age, ft$age)
+#after inspecting this column found some ages in here
+ft$name_dob_1.year_of_birth[ft$name_dob_1.year_of_birth<18] = NA
+
 ft <- ft %>% 
-  mutate(calc_age = ifelse(is.na(calc_age) & name_dob_1.year_of_birth < 100, name_dob_1.year_of_birth, calc_age))
+  mutate(age = ifelse(is.na(age) & name_dob_1.year_of_birth < 100, name_dob_1.year_of_birth, age))
 
-ft$calc_age <- ifelse(is.na(ft$calc_age) & ft$center == "NIBG", ft$Age, ft$calc_age)
-ft$calc_age[ft$calc_age<18] = NA
+#NIBG has reported that their BBC age is the ODK age
+ft$age <- ifelse(is.na(ft$age) & ft$center == "NIBG", ft$Age, ft$age)
+#ft$calc_age[ft$calc_age<18] = NA
 
-ft$calc1 = ft$calc_age
-ft$calc1 = ifelse(is.na(ft$calc1), ft$Age, ft$calc1)
-ft$calc1[ft$calc1<18] = NA
-#ft$calc_age = ifelse(is.na(ft$calc_age), ft$name_dob_1.age_on_interview, ft$calc_age)
-#ft$age_on_interview[which(ft$age_on_interview<18)] = NA
-#ft = subset(ft, select = -Age)
+ft$age_withBBC = ft$age
+ft$age_withBBC = ifelse(is.na(ft$age_withBBC), ft$Age, ft$age_withBBC)
+ft$age_withBBC[ft$age_withBBC<18] = NA
 
-ft$Granulocytes = NA
-ft$Granulocyte_count = NA
-ft$MID = NA
-ft$MID_Percent = NA
+ft = ft[-which(ft$LocalID=="CBRI/B/040009"),] # PD sample
 
-# Add SKIMS data ----------------------------------------------------------
+ft$name_dob_1.dob = as.character(ft$name_dob_1.dob)
+ft$introduction_1.examination_date = as.character(ft$introduction_1.examination_date)
+# Adding SKIMS data -------------------------------------------------------
+
 skims_df = read.table("SKIMS_final.csv", sep = ",", header = T, fill = T)
 skims_df[skims_df==""] = NA
 skims_df = skims_df[-which(is.na(skims_df$Barcode)),]
 
-# SKIM column renaming ----------------------------------------------------
+#Renaming SKIMS data columns
 
-
+names(skims_df)[names(skims_df) == "Albumin..g.dl."] <- "Albumin"
+names(skims_df)[names(skims_df) == "ALP..IU.L."] <- "Alkaline_Phosphatase"
 names(skims_df)[names(skims_df) == "Barcode"] <- "LocalID"
-names(skims_df)[names(skims_df) == "BSR.mg.dl."] <- "RBS"
 names(skims_df)[names(skims_df) == "BSF..mg.dl."] <- "FBS_Fasting_Blood_Glucose"
-names(skims_df)[names(skims_df) == "UREA..mg.dl."] <- "Urea"
+names(skims_df)[names(skims_df) == "BSR.mg.dl."] <- "RBS"
+names(skims_df)[names(skims_df) == "Cholestrol..mg.dl."] <- "Cholesterol"
 names(skims_df)[names(skims_df) == "Creatinine..mg.dl."] <- "Creatinine"
-names(skims_df)[names(skims_df) == "U..ACID..mg.dl."] <- "Uric_Acid"
+names(skims_df)[names(skims_df) == "GRA..10.9.l."] <- "Granulocyte_count"
+names(skims_df)[names(skims_df) == "GRA."] <- "Granulocytes"
+names(skims_df)[names(skims_df) == "HbA1C.."] <- "HbA1C_Glycosylated_Haemoglobin"
+names(skims_df)[names(skims_df) == "HDL..mg.dl."] <- "HDL"
+names(skims_df)[names(skims_df) == "HGB..g.dI."] <- "HB_Haemoglobin"
+names(skims_df)[names(skims_df) == "LDL..mg.dl."] <- "LDL"
+names(skims_df)[names(skims_df) == "LYM..10.9.l."] <- "Absolute_Lymphocyte_Count"
+names(skims_df)[names(skims_df) == "LYM."] <- "Lymphocytes"
+names(skims_df)[names(skims_df) == "MCH..pg."] <- "MCH_Mean_Corpuscular_Hb"
+names(skims_df)[names(skims_df) == "MID."] <- "MID_Percent"
+names(skims_df)[names(skims_df) == "MID..10.9.l."] <- "MID"
 names(skims_df)[names(skims_df) == "OT.AST..IU.L."] <- "AST_SGOT"
 names(skims_df)[names(skims_df) == "PT.ALT..IU.L."] <- "ALT_SGPT"
 names(skims_df)[names(skims_df) == "Total.Bilrubin..mg.dl."] <- "Total_Bilirubin"
-names(skims_df)[names(skims_df) == "ALP..IU.L."] <- "Alkaline_Phosphatase"
-names(skims_df)[names(skims_df) == "Albumin..g.dl."] <- "Albumin"
 names(skims_df)[names(skims_df) == "Total.Protein..mg.dl."] <- "Protein"
-names(skims_df)[names(skims_df) == "Cholestrol..mg.dl."] <- "Cholesterol"
 names(skims_df)[names(skims_df) == "Triglyceride..mg.dl."] <- "Triglycerides"
-names(skims_df)[names(skims_df) == "HDL..mg.dl."] <- "HDL"
-names(skims_df)[names(skims_df) == "LDL..mg.dl."] <- "LDL"
-names(skims_df)[names(skims_df) == "HbA1C.."] <- "HbA1C_Glycosylated_Haemoglobin"
+names(skims_df)[names(skims_df) == "UREA..mg.dl."] <- "Urea"
+names(skims_df)[names(skims_df) == "U..ACID..mg.dl."] <- "Uric_Acid"
 names(skims_df)[names(skims_df) == "WBC..10.9.l."] <- "WBC_Total_White_Blood_Cell_Count"
-names(skims_df)[names(skims_df) == "LYM..10.9.l."] <- "Absolute_Lymphocyte_Count"
-names(skims_df)[names(skims_df) == "LYM."] <- "Lymphocytes"
-names(skims_df)[names(skims_df) == "MID."] <- "MID_Percent"
-names(skims_df)[names(skims_df) == "GRA..10.9.l."] <- "Granulocyte_count"
-names(skims_df)[names(skims_df) == "GRA."] <- "Granulocytes"
-names(skims_df)[names(skims_df) == "MID..10.9.l."] <- "MID"
-names(skims_df)[names(skims_df) == "HGB..g.dI."] <- "HB_Haemoglobin"
-names(skims_df)[names(skims_df) == "MCH..pg."] <- "MCH_Mean_Corpuscular_Hb"
 
-#skims_df$WBC_Total_White_Blood_Cell_Count = (skims_df$WBC_Total_White_Blood_Cell_Count)*1000
-#skims_df$Absolute_Lymphocyte_Count = (as.numeric(skims_df$Absolute_Lymphocyte_Count)) * 1000
 
 # SKIM adding ODK ---------------------------------------------------------
 
@@ -1385,7 +1437,7 @@ odk_main$localid = odk_main$introduction_1.local_id_manual
 odk_main$localid[odk_main$localid==""] = NA
 odk_main$localid = ifelse(is.na(odk_main$localid), odk_main$introduction.local_id_barcode, odk_main$localid)
 odk_main$center = gsub("\\/.*","", odk_main$localid)
-
+names(odk_main)[names(odk_main)=="anthropometry.wasit_cir"] = "anthropometry.waist_cir"
 
 common_cols <- intersect(names(odk_main), names(ft))
 
@@ -1407,8 +1459,8 @@ skims_df = subset(skims_df, select = -Gender)
 #age resolution
 skims_df$name_dob_1.dob[skims_df$name_dob_1.dob == ""] = NA
 skims_df$introduction_1.examination_date[skims_df$introduction_1.examination_date == ""] = NA
-skims_df$name_dob_1.dob = gsub(",", "", skims_df$name_dob_1.dob)
-skims_df$introduction_1.examination_date = gsub(",", "", skims_df$introduction_1.examination_date)
+#skims_df$name_dob_1.dob = gsub(",", "", skims_df$name_dob_1.dob)
+#$introduction_1.examination_date = gsub(",", "", skims_df$introduction_1.examination_date)
 
 # SKIM age resolution -----------------------------------------------------
 
@@ -1417,111 +1469,31 @@ library(anytime)
 library(lubridate)
 
 #skims_df$dob1 = skims_df$name_dob_1.dob
+skims_df$name_dob_1.dob = as.Date(skims_df$name_dob_1.dob, format = '%Y-%m-%d')
 
-parse_and_convert_date <- function(date_str) {
-  if (grepl("^\\d{4}-\\d{2}-\\d{2}$", date_str)) {
-    # If it's in "yyyy-mm-dd" format, just return it
-    return(date_str)
-  } else if (grepl("^\\d{2}-\\d{2}-\\d{4}$", date_str)) {
-    # If it's in "dd-mm-yyyy" format, convert it to "yyyy-mm-dd"
-    parsed_date <- dmy(date_str)
-    return(as.character(parsed_date, format = "%Y-%m-%d"))
-  } else {
-    return(NA)  # Date couldn't be parsed
-  }
-}
+skims_df$introduction_1.examination_date = as.Date(skims_df$introduction_1.examination_date, format = '%Y-%m-%d')
 
-# Standardize the date format
-skims_df <- skims_df %>%
-  mutate(name_dob_1.dob = sapply(name_dob_1.dob, parse_and_convert_date))
 
-#skims_df = subset(skims_df, select = -dob1)
 
-skims_df$introduction_1.examination_date[which(skims_df$introduction_1.examination_date=="Feb 10 2021")] = "2021-02-10"
+skims_df$age =trunc((skims_df$name_dob_1.dob %--% skims_df$introduction_1.examination_date) / years(1))
+sum(is.na(skims_df$age))
 
-#skims_df$intro1 = skims_df$introduction_1.examination_date
-
-# Define a custom function to parse dates and convert to "yyyy-mm-dd" format
-parse_and_convert_date <- function(date_str) {
-  if (grepl("^\\d{4}-\\d{2}-\\d{2}$", date_str)) {
-    # If it's in "yyyy-mm-dd" format, just return it
-    return(date_str)
-  } else if (grepl("^\\d{2}-\\d{2}-\\d{4}$", date_str)) {
-    # If it's in "dd-mm-yyyy" format, convert it to "yyyy-mm-dd"
-    parsed_date <- dmy(date_str)
-    return(as.character(parsed_date, format = "%Y-%m-%d"))
-  } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{4}$", date_str)) {
-    # If it's in "dd-bb-yyyy" format, convert it to "yyyy-mm-dd"
-    parsed_date <- dmy(date_str)
-    return(as.character(parsed_date, format = "%Y-%m-%d"))
-  } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{2}$", date_str)) {
-    # If it's in "dd-bb-yy" format, convert it to "yyyy-mm-dd"
-    parsed_date <- dmy(date_str)
-    return(as.character(parsed_date, format = "%Y-%m-%d"))
-  } else {
-    return(NA)  # Date couldn't be parsed
-  }
-}
-
-# Standardize the date format
-skims_df <- skims_df %>%
-  mutate(introduction_1.examination_date = sapply(introduction_1.examination_date, parse_and_convert_date))
-
-#skims_df = subset(skims_df, select = -intro1)
-
-skims_df$calc_age =trunc((skims_df$name_dob_1.dob %--% skims_df$introduction_1.examination_date) / years(1))
-sum(is.na(skims_df$calc_age))
-#skims_df$age_on_interview = floor(as.numeric(skims_df$name_dob_1.age_on_interview))
-#skims_df$name_dob_1.dob[skims_df$name_dob_1.dob == ""] = NA
-# plot(skims_df$name_dob_1.approx_age ~ skims_df$age_on_interview, ylim = c(0, 100), col = as.factor(skims_df$name_dob_1.gender))
-# abline(0, 1)
-# plot(skims_df$calc_age ~ skims_df$name_dob_1.approx_age, xlim = c(0, 100))
-# abline(0, 1)
-#library(dplyr)
-agevec = select(skims_df, LocalID, Age, name_dob_1.dob, calc_age, name_dob_1.gender, name_dob_1.year_of_birth, name_dob_1.age_on_interview, name_dob_1.approx_age, introduction_1.examination_date)
-#agevec$age_on_interview[agevec$age_on_interview == ""] = NA
-agevec$Age[agevec$Age == ""] = NA
-agevec$name_dob_1.dob[agevec$name_dob_1.dob == ""] = NA
-agevec$calc_age[agevec$calc_age == ""] = NA
-agevec$name_dob_1.year_of_birth[agevec$name_dob_1.year_of_birth == ""] = NA
-agevec$name_dob_1.age_on_interview[agevec$name_dob_1.age_on_interview == ""] = NA
-agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age == ""] = NA
-agevec$introduction_1.examination_date[agevec$introduction_1.examination_date == ""] = NA
-agevec$calc_age[agevec$calc_age == 0] = NA
-agevec$calc_age[agevec$calc_age < 18] = NA
-agevec$name_dob_1.age_on_interview[agevec$name_dob_1.age_on_interview <18] = NA
-agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age<18] = NA
-#agevec$age_on_interview[agevec$age_on_interview <18] = NA
-agevec$name_dob_1.approx_age[agevec$name_dob_1.approx_age > 250] = NA
-agevec = agevec[!duplicated(agevec$LocalID),]
-#AGE MISSING VALUE IMPUTATION - CALC AGE AND AGE ON INTERVIEW
-colSums(is.na(agevec))
-agevec$calc_age = ifelse(is.na(agevec$calc_age), agevec$name_dob_1.age_on_interview, agevec$calc_age)
-agevec$calc_age <- ifelse(is.na(agevec$calc_age), agevec$name_dob_1.approx_age, agevec$calc_age)
-agevec$calc_age[agevec$calc_age < 18] = NA
-colSums(is.na(agevec))
-
-# plt1 = ggpairs(skims_df[skims_df$center=="CBRI",], columns = c("Age","calc_age","name_dob_1.age_on_interview","name_dob_1.approx_age"), 
-#                aes(color = name_dob_1.gender, alpha = 0.5)) + geom_abline(intercept = 0, slope = 1)
-# plt1
-
-#putting into original dataset
-skims_df$calc_age = agevec[match(skims_df$LocalID, agevec$LocalID), ]$calc_age
+#ft$calc_age = agevec[match(ft$LocalID, agevec$LocalID), ]$calc_age
 skims_df$name_dob_1.age_on_interview[skims_df$name_dob_1.age_on_interview<18] = NA
-skims_df$calc_age = ifelse(is.na(skims_df$calc_age), skims_df$name_dob_1.age_on_interview, skims_df$calc_age)
-skims_df$name_dob_1.approx_age[skims_df$name_dob_1.approx_age<18] = NA
-skims_df$name_dob_1.approx_age[skims_df$name_dob_1.approx_age>250] = NA
-skims_df$calc_age = ifelse(is.na(skims_df$calc_age), skims_df$name_dob_1.approx_age, skims_df$calc_age)
+skims_df$age = ifelse(is.na(skims_df$age), skims_df$name_dob_1.age_on_interview, skims_df$age)
+#ft$name_dob_1.approx_age[ft$name_dob_1.approx_age<18] = NA
+#ft$name_dob_1.approx_age[ft$name_dob_1.approx_age>250] = NA
+skims_df$age = ifelse(is.na(skims_df$age), skims_df$name_dob_1.approx_age, skims_df$age)
+#after inspecting this column found some ages in here
+#ft$name_dob_1.year_of_birth[ft$name_dob_1.year_of_birth<18] = NA
+
 skims_df <- skims_df %>% 
-  mutate(calc_age = ifelse(is.na(calc_age) & name_dob_1.year_of_birth < 100, name_dob_1.year_of_birth, calc_age))
+  mutate(age = ifelse(is.na(age) & name_dob_1.year_of_birth < 100, name_dob_1.year_of_birth, age))
 
-skims_df$calc_age <- ifelse(is.na(skims_df$calc_age) & skims_df$center == "NIBG", skims_df$Age, skims_df$calc_age)
-skims_df$calc_age[skims_df$calc_age<18] = NA
-
-skims_df$calc1 = skims_df$calc_age
-skims_df$calc1 = ifelse(is.na(skims_df$calc1), skims_df$Age, skims_df$calc1)
-skims_df$calc1[skims_df$calc1<18] = NA
-
+skims_df$age[skims_df$age<18] = NA
+skims_df$age_withBBC = skims_df$age
+skims_df$age_withBBC = ifelse(is.na(skims_df$age_withBBC), skims_df$Age, skims_df$age_withBBC)
+skims_df$age_withBBC[skims_df$age_withBBC<18] = NA
 
 # SKIM ethnicity cleaning -------------------------------------------------
 
@@ -1529,435 +1501,46 @@ skims_df$calc1[skims_df$calc1<18] = NA
 skims_df$name_dob_1.ethnicity = tolower(skims_df$name_dob_1.ethnicity)
 skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="")] = NA
 skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="na")] = NA
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhoksa (u.k)")]="bhoksa(uk)"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhoksa(u.k)")]="bhoksa(uk)"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhoksa (uk)")]="bhoksa(uk)"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhoksa ( u.k)")]="bhoksa(uk)"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhoksa( u.k)")]="bhoksa(uk)"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhoksa(uk)")]="bhoksa"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="lingayath")]="lingayats"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="lingayat")]="lingayats"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vidiki")]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vidiki brahmin")]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vidiki  brahmin")]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vidiki brahmin (mulukanad)")]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vaidiki bramhin")]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="santal")]="santhal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="santha")]="santhal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="santali")]="santhal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="santhali")]="santhal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="padiyachi")]="padayachi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="nadoda rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hindu nadoda rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rabha/patirabha")]="rabha"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="  ")]=" "
-skims_df$name_dob_1.ethnicity = gsub("\\s+", " ", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bharadwaj")]="bhardwaj"
-condition = grepl("ravidas", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition])
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ravidas/")]="ravidas"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ravidass")]="ravidas"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ravidasbudichae")]="ravidas"
-skims_df$name_dob_1.ethnicity = gsub("kennet", "kannet", skims_df$name_dob_1.ethnicity)
-condition1 = grepl("kannet", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition1] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition1])
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="iyengar father tamil iyengar mother mandyam iyengar")]="iyangar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kani kunj bharmin")]="kanyakubj"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kani")]="kanyakubj"
-condition2 = grepl("deshastha", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition2] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition2])
-condition3 = grepl("kokanastha", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition3] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition3])
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="namasudra muslim")]="namasudra"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="converted namasudra")]="namasudra"
-condition4 = grepl("kanyakubj", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition4] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition4])
-skims_df$name_dob_1.ethnicity <- sub("^st\\/", "", skims_df$name_dob_1.ethnicity)
-condition4 = grepl("balmiki", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition4] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition4])
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kudmi mahato")]="kurmi mahato"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="st /khasi")]="khasi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khasi/st")]="khasi"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khasi /st")]="khasi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khasi/ st")]="khasi"
 
-condition5 = grepl("yadav", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition5] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition5])
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="yadav/")]="yadav"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="yadav/yatra")]="yadav"
-condition6 = grepl("saryupairin", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition6] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition6])
-condition7 = grepl("jat", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition7] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition7])
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jat(haryana)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jay (haryana)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jay of haryana")]="jat"
-skims_df$name_dob_1.ethnicity = sub("^mizo/(.*)", "mizo", skims_df$name_dob_1.ethnicity)
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="scheduled tribe/mizo/pawih/lai/khenglawt")]="mizo"
-skims_df$name_dob_1.ethnicity = sub("^maithil brahmin/(.*)", "maithil brahmin", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity = sub("^maithil brahmin /(.*)", "maithil brahmin", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="maithil brahmin (bihar)")]="maithil brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="maithili brahmin")]="maithil brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="maithil brahamin")]="maithil brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="namibiar")]="nambiar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="koli hindu")]="koli"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hindu koli")]="koli"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="namboodiri")]="nambudri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="nambudiri")]="nambudri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="namboodiri brahmin")]="nambudri"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhoksa(uk)")]="bhoksa"
 skims_df$name_dob_1.ethnicity = sub(".*/(kashmiri/[^/]+)", "\\1", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmir/muslim")]="kashmiri/muslim"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri muslim")]="kashmiri/muslim"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kahmiri/muslim")]="kashmiri/muslim"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="syed/muslim/kashmiri")]="kashmiri/muslim"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhat/ kashmiri/muslim")]="kashmiri/muslim"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="syed kashmiri muslim")]="kashmiri/muslim"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhat/ kashmiri/pandit")]="kashmiri/pandit"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri pandit")]="kashmiri/pandit"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjjar/bakarwal")]="bakarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="mir/gujjar/muslim")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujar/bakarwal")]="bakarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujar/bakarwak")]="bakarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/bakarwak")]="bakarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/bakarwal")]="bakarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vaidiki bramhin")]="vaidiki"
-#skims_df$name_dob_1.ethnicity = sub("^gujjar(.*)", "gujjar", skims_df$name_dob_1.ethnicity) #CHECK THIS LINE
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gurjar")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="valmiki")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="valmiki/balmiki")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="male")]="mala"
-skims_df$name_dob_1.ethnicity = sub("gb", "garhwali brahmin", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity = sub("g b", "garhwali brahmin", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sandiya")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity==" hajong")]="hajong"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="st) hajong")]="hajong"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity==" khasi")]="khasi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vakkaliga")]="vakaliga"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vokkaliga")]="vakaliga"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="scheduled tribe/mizo/pawih/lai/khenglawt")]="mizo"
-skims_df$name_dob_1.ethnicity = sub("^thakur(.*)", "thakur", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity = sub("^ahir(.*)", "ahir", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity = sub("^ansari(.*)", "ansari", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity = sub("^banjara(.*)", "banjara", skims_df$name_dob_1.ethnicity)
-
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhardwaj gn")]="bhardwaj garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="komma naidu")]="naidu"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kamma naidu")]="naidu"
-skims_df$name_dob_1.ethnicity = sub(".*iyengar", "iyangar", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="champawat (rajput)")]="rajput"
-skims_df$name_dob_1.ethnicity = sub(".*patidar", "patidar", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="chichi/gujjar/muslim")]="gujjar"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bakarwal")]="bakarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhati")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhati(rajput)")]="rajput"
-skims_df$name_dob_1.ethnicity = sub(".*garhwali brahmin", "garhwali brahmin", skims_df$name_dob_1.ethnicity)
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhati")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khatri (punjab)")]="khatri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khatri ( punjab)")]="khatri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ghooser")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gharu")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="malhotra")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sonamwal")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jadu")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="malayalam")]="tiya"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="thiyya")]="tiya"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="nad")]="nadar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="brahmin")]="rarhi brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rabha/patirabha")]="rabha"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kunnumal")]="tiya"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rarhi brahmin")]="rahri brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="pandit (brahmin) bharwaj gotra")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kushyap")]="garhwali brahmin" 
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="mulakanadu")]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="velanadu")]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="telugu" & skims_df$center=='CCMB')]="chenchu"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="telugu" & skims_df$center=='CBRI')]="vaidiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hindi" & skims_df$center=='CBRI')]="ravidas"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hindi" & skims_df$center=='IGIB')]="kanyakubj"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="north indian")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujarati")]="rajput"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="lingayat")]="lingayats"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhardwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="barthwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bharthwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bharthwj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="muslim" & skims_df$center=='SKIM')]="kashmiri/muslim"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="muslim" & skims_df$center=='NIBG')]="namasudra"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bakarwal")]="gujjar and bakarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="pandit (brahmin) bhardwaj gotra")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar (haryana)")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar haryana")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/ muslim")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/muslim")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="deshastha")]="desastha"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="desastha")]="desastha brahmin"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="iyengar")]="iyangar"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kanet")]="kannet"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="karn kaystha")]="karn kayastha"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kanyakubj brahmin")]="kanyakubj brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kannauj")]="kanyakubj brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kani kubj brahmin")]="kanyakubj brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kani kunj")]="kanyakubj brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kanyakubj")]="kanyakubj brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kokanastha")]="kokanastha brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kokanasth brahmin")]="kokanastha brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="nambudri")]="nambudri brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="saryuparin")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vaidiki")]="vaidiki brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="adikarnataka")]="adi karnataka"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="odia brahmin")]="oriya brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="talpda koli")]="koli"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="leva patel")]="patidar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="nabarangpur")]="gond"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kanwar")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="agarwal")]="aggarwal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=='scheduled caste (jele)')] = 'namasudra'
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=='converted namasudra')] = 'namasudra'
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=='namasudra muslim')] = 'namasudra'
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=='saryuparin brahmin (up)')] = 'saryuparin brahmin'
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="prayagraj")]=NA
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shangrah")]="kannet"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashyp")]="kashyap"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kanat")]="kannet"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kannat")]="kannet"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kennat")]="kannet"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khasi/jaintia")]="khasi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="saran(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="panchaar(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bapediya(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhadu(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhadyasar(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhirda(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="chotiya(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="makwana vankar")]="vankar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hindu vankar")]="vankar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kol")]="koli"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="aggarwal")]="agrawal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="agarwal")]="agrawal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="yadav/yaduvanshi")]="yadav"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="yadav/kashyap")]="yadav"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vanar rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vaghela rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ravidasbnaden")]="ravidas"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ravidas(hr)")]="ravidas"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ravidas(up)")]="ravidas"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ravidas/dhusia")]="ravidas"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="audichya sahastra brahman")]="audichya sahastra"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="audichya sahastra pandya")]="audichya sahastra"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="audichya sahastra trividi")]="audichya sahastra"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="aydichya sahastra")]="audichya sahastra"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="baigani")]="baiga"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bakmiki")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bheel")]="bhil"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bheel meena")]="bhil meena"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhil merna")]="bhil meena"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhilmeena")]="bhil meena"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhillmeena")]="bhil meena"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="chik barai")]="chik baraik"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="champawat")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="champawat rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="dabhi rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="brahmins")]="brahmin"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bramhin")]="brahmin"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bramin")]="brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="danga(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gwala(jat)")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="marathi")]="maratha"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="maithili")]="maithil brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="maithili brahmin r")]="maithil brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="mathil brahamin")]="maithil brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="mal")]="mala"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujar")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar (hr)")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar (up)")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gurjur")]="gujjar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="namboodiri bhramin")]="nambudri brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="namboodri bhramin")]="nambudri brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="nambudiris")]="nambudri brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="namboodri brahmin")]="nambudri brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="paliwal")]="paliwal brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="paliwal bharmin")]="paliwal brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="patidar kadva")]="patidar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="patidar leuva")]="patidar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="prayan")]="parayan"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="raj banshi")]="rajbanshi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="koknastha brahmin")]="kokanastha brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rajput sodha")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hindu rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jadeja rajput")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rajput gohil")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sidq")]="siddi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garhwali")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garhwali barthwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garawali bharthwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garhwali bharthwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="baradwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bharatwaj")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garhwali brahmin/sonak")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hakki pikki")]="hakkipikki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hakki pikiki")]="hakkipikki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khatri (hr")]="khatri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khatri (hr)")]="khatri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khatri (pb)")]="khatri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khatri(hr)")]="khatri"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kolii")]="koli"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kolis")]="koli"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="hindukoli")]="koli"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kunnet")]="kannet"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kallar calto")]="kallar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jaat")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jata")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kathelia")]="katheria"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kadva")]="kadva patel"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kadwa patel")]="kadva patel"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashyap")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kasyap")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashyap")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khasyap")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashyap gothara")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashyap gotra")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kasyap gotra")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="levva patel")]="leva patel"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="meena (r.j)")]="meena (rajasthan)"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="mund")]="munda"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="paniya")]="paniyan"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="s.p.b")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="saryupari")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="saryuparian")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb agastya")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb bharist")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb gotra")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb kasyap")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb shandayal")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb shandilya")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb/savaran")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garg gotra saryuparian")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhii meena")]="bhil meena"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="odia bramhin")]="oriya brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vaidiki bhramin")]="vaidiki brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vankar hindu")]="vankar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bodh (spiti)")]="spiti"
-
-
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="dang")]="dangi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="halu")]="halakki"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmir/muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kahmiri/muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri/muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="syed/muslim/kashmiri")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhat/ kashmiri/muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="syed kashmiri muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="syed kashmiri  muslim")]="kashmiri_muslim"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhat/ kashmiri/pandit")]="kashmiri_pandit"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri pandit")]="kashmiri_pandit"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri/pandit")]="kashmiri_pandit"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjjar/bakarwal")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="mir/gujjar/muslim")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="chichi/gujjar/muslim")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/muslim")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/ muslim")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujar/bakarwal")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujar/bakarwak")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/bakarwak")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujjar/bakarwal")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bakarwal")]="gujjar_and_bakkarwal"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gujar")]="gujjar_and_bakkarwal"
 skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="dogri")]="dogra"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="nambo")]="nambudri brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="manipuri")]="meitei"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jamnagar")]="siddi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="abu road")]="bhil meena"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhargav/")]="kanyakubj brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garhakota")]="agrawal"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jaipur")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jongksha")]="khasi"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kadva patel")]="patidar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="leva patel")]="patidar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="patel")]="patidar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rajesh")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri")]="kashmiri/pandit"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kheaadla")]="balmiki"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sengar")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sandilya")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sandiyala")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sandiyala gothara")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sandyala")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shandayal")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shandilya")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shyandilya")]="garhwali brahmin"
+skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashmiri")]="kashmiri_pandit"
 
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="aagstya")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bachic")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="baghel")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhambu")]="jat"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bharist")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bhrmin")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="brahmin")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bramhin")]="vaidiki brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bramin" & skims_df$LocalID == "CBRI/B/085310")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="bramin" & skims_df$LocalID == "CBRI/B/060193")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="chauhan")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="chou")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="chudawat")]="rajput"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="danta")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="dhola")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="garg")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="ghatela")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="godara")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="gotham")]="saryuparin brahmin"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="jain")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kalwaniya")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kashik")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kaswan")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kasyap kayastha")]="kayastha"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="katheria")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kayastha kasyap")]="kayastha"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="khadav")]="jat"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kondal")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="koshti")]="lingayats"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kotinya")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kurmi gangwar")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="kushwaha")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="laguni mishra")]="saryuparin brahmin"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="lambani")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="meena (rajasthan)")]="bhil meena"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="niyogi brahmin")]="vaidiki brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rathore")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="rawat")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sandhayala")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sandheyalga")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="saravana")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sarvana")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sarvaran")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sarvaran gotra")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shandayal gotra")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shandil")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shandilya gotra")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shaneliya")]="garhwali brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shring")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sarveprave")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="saryaveparve")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="saryaveparvein")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="savaran")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sb gotham")]="saryuparin brahmin"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sc")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sshandaya")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shandaya")]="saryuparin brahmin"
-#skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="shring")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sodawat")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="solanki")]="rajput"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sravana")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="sravuveparave bramin")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="tamil" & skims_df$LocalID=="CCMB/C/050026")]="nadar"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="tamil" & skims_df$LocalID=="CCMB/C/060080")]="parayan"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="tomar")]="thakur"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vashist")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vastasya")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vastaya")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vastsa")]="saryuparin brahmin"
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="vats")]="saryuparin brahmin"
-
-
-condition8 = grepl("agarwal", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition8] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition8])
-
-condition9 = grepl("agrawal", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity[condition9] <- sub(" .*", "", skims_df$name_dob_1.ethnicity[condition9])
-
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity=="agarwal")]="agrawal"
-
-skims_df$name_dob_1.ethnicity[which(skims_df$name_dob_1.ethnicity %in% c("0", "1", "2", "3", "4"))]=NA
-skims_df$name_dob_1.ethnicity = gsub("iyyengar", "iyangar", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity = gsub("iyangars", "iyangar", skims_df$name_dob_1.ethnicity)
-skims_df$name_dob_1.ethnicity = gsub(".*iyangar", "iyangar", skims_df$name_dob_1.ethnicity)
 
 skims_df$region = "North"
 skims_df$center = 'SKIM'
 
-names(skims_df)[names(skims_df) == "anthropometry.wasit_cir"] = "anthropometry.waist_cir"
+
+# adding-subtracting SKIMS columns ----------------------------------------
+#I Want to preserve these values, but the original DF does not have this
+ft$Granulocytes = NA
+ft$MID = NA
+ft$MID_Percent = NA
 
 skims_df <- skims_df[, !colnames(skims_df) %in% setdiff(colnames(skims_df), colnames(ft))]
-# SKIM adding new columns for rbind ---------------------------------------
 
 new_cols = c(setdiff(colnames(ft), colnames(skims_df)))
 library(dplyr)
@@ -1965,11 +1548,21 @@ SKIM_joined = skims_df %>%
   mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
 SKIM_joined<-SKIM_joined[names(ft)]
-names(SKIM_joined)[names(SKIM_joined) == "Immature_granulocytes.1"] = "Immature_granulocytes"
+
+SKIM_joined$nonmissing = rowSums(is.na(SKIM_joined))
+
+SKIM_joined = SKIM_joined[!SKIM_joined$LocalID %in% setdiff(SKIM_joined$LocalID, odk_main$localid),]
+SKIM_joined = subset(SKIM_joined, select = -nonmissing)
+
+SKIM_joined$name_dob_1.dob = as.character(SKIM_joined$name_dob_1.dob)
+SKIM_joined$introduction_1.examination_date = as.character(SKIM_joined$introduction_1.examination_date)
 
 ft = rbind(ft, SKIM_joined)
 
-# Replacing ILSB CBC ------------------------------------------------------
+
+
+# ILSB blood counts replacement -------------------------------------------
+
 library(xlsx)
 library(here)
 ILSB = read_excel("ILSB_CBC.xlsx", col_types = 'text')
@@ -1997,6 +1590,8 @@ names(ILSB)[names(ILSB) == "EO_per"] <- "Eosinophils"
 names(ILSB)[names(ILSB) == "BASO_per"] <- "Basophils"
 
 
+ILSB$LocalID = gsub("ILS/", "ILSB/", ILSB$LocalID)
+
 ft$Absolute_Basophil_Count[ft$LocalID %in% ILSB$LocalID] <- ILSB$Absolute_Basophil_Count[match(ft$LocalID[ft$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 ft$Absolute_Neutrophil_Count[ft$LocalID %in% ILSB$LocalID] <- ILSB$Absolute_Neutrophil_Count[match(ft$LocalID[ft$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 ft$Absolute_Eosinophil_Count[ft$LocalID %in% ILSB$LocalID] <- ILSB$Absolute_Eosinophil_Count[match(ft$LocalID[ft$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
@@ -2021,7 +1616,11 @@ ft$MCH_Mean_Corpuscular_Hb[ft$LocalID %in% ILSB$LocalID] <- ILSB$MCH_Mean_Corpus
 ft$RDW_Red_Cell_Distribution_Width[ft$LocalID %in% ILSB$LocalID] <- ILSB$RDW_Red_Cell_Distribution_Width[match(ft$LocalID[ft$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 ft$MPV_Mean_Platelet_Volume[ft$LocalID %in% ILSB$LocalID] <- ILSB$MPV_Mean_Platelet_Volume[match(ft$LocalID[ft$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 
-# Replacing IGIB CBC ------------------------------------------------------
+
+# Have to check if I can add more samples to ft with ILSB -----------------
+
+# Adding IGIB data --------------------------------------------------------
+
 library(xlsx)
 library(here)
 IGIB = read_excel("IGIB4_December2023.xlsx", col_types = 'text')
@@ -2035,127 +1634,7 @@ IGIB$WBC_Total_White_Blood_Cell_Count = as.numeric(IGIB$WBC_Total_White_Blood_Ce
 ft$WBC_Total_White_Blood_Cell_Count[ft$LocalID %in% IGIB$LocalID] <- IGIB$WBC_Total_White_Blood_Cell_Count[match(ft$LocalID[ft$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
 ft$Platelet_Count[ft$LocalID %in% IGIB$LocalID] <- IGIB$Platelet_Count[match(ft$LocalID[ft$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
 ft$Platelet_Count = as.numeric(ft$Platelet_Count)
-#missingresolved$Platelet_Count[missingresolved$LocalID %in% IGIB$LocalID] <- IGIB$Platelet_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
-#missingresolved$Absolute_Monocyte_Count[missingresolved$LocalID %in% IGIB$LocalID] = IGIB$Absolute_Monocyte_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
 ft$Absolute_Monocyte_Count[ft$LocalID %in% IGIB$LocalID] <- IGIB$Absolute_Monocyte_Count[match(ft$LocalID[ft$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
-
-# # Adding Vokkaliga data ---------------------------------------------------
-# 
-# 
-# CBR = read_excel("ALl vokkalige and Adikarnataka taken for GI-Socio-BBC-Karthik-12Aug2021-gps-updated.xlsx", sheet = 1, col_types = 'text')
-# 
-# colnames(CBR)
-# 
-# names(CBR)[names(CBR) == "Ethnicity"] = "name_dob_1.ethnicity"
-# names(CBR)[names(CBR) == "Village ID"] = "villageid"
-# #CBR$"introduction_1:institute_name" = tolower(CBR$"introduction_1:institute_name")
-# names(CBR)[names(CBR) == "IDS_GPS_GPS_LNG"] = "name_dob.gps.Longitude"
-# names(CBR)[names(CBR) == "IDS_GPS_DEVICEID"] = "checklists.deviceid"
-# names(CBR)[names(CBR) == "IDS_GPS_GPS_LAT"] = "name_dob.gps.Latitude"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_7_VILLAGE_NAME"] = "name_dob_1.village"
-# names(CBR)[names(CBR) == "Age"] = "name_dob_1.approx_age"
-# names(CBR)[names(CBR) == "Gender"] = "name_dob_1.gender"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_5_EDUCATION_LEVEL"] = "socio_demographics.highest_edu"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_11_SYSTOLIC_BP"] = "anthropometry.sys_bp"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_11_DIASTOLIC_BP"] = "anthropometry.dia_bp"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_7_INCOME_RUPEES"] = "socio_demographics.income_family"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_7_CURRENT_JOB"] = "socio_demographics.occupation"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_1_MARITAL_STATUS"] = "socio_demographics.marital_status"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_2_LANGUAGES_SPEAK"] = "socio_demographics.lang_speak"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_2_LANGUAGES_WRITE"] = "socio_demographics.lang_write"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_2_MOTHER_TONGUE"] = "name_dob_1.mother_tongue"
-# #names(CBR)[names(CBR) == "MEMBERS_RELATIONSHIP_1"] = ""
-# #names(CBR)[names(CBR) == "MEMBERS_OCCUPATION_1"] = ""
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_1_N_FAMILY_MEMBERS"] = "socio_demographics.n_family_member"
-# names(CBR)[names(CBR) == "QUESTIONNAIRE_5_EDUCATION_YEARS"] = "socio_demographics.years_edu"
-# #names(CBR)[names(CBR) == "nicotine_use_1-smoked_tobacco"] = "smoking_tobacco_alcohol:smoking_status"
-# names(CBR)[names(CBR) == "nicotine_use_2-currently_smoke"] = "smoking_tobacco_alcohol.smoking_status"
-# #names(CBR)[names(CBR) == "alcohol_use_1-consumed_alcohol"] = "socio_demographics:occupation"
-# CBR$smoking_tobacco_alcohol.alcohol_status = "never"
-# 
-# CBR = CBR %>%
-#   mutate(smoking_tobacco_alcohol.alcohol_status = case_when(
-#     `alcohol_use_1-consumed_alcohol` == "yes" & `alcohol_use_1a-currently_drink`=='yes' ~ "Current",
-#     `alcohol_use_1a-currently_drink`=='no' ~ "Past",
-#     TRUE ~ "Never"
-#   ))
-# 
-# # CBR$smoking_tobacco_alcohol.alcohol_status = ifelse(CBR$`alcohol_use_1-consumed_alcohol`=='yes' & CBR$`alcohol_use_1a-currently_drink`=='yes', 'current',
-# #                                                     ifelse(CBR$`alcohol_use_1a-currently_drink`=='no', 'past'), ifelse(CBR$`alcohol_use_1a-currently_drink`==0, 'past'))
-# #names(CBR)[names(CBR) == "alcohol_use_1a-currently_drink"] = "smoking_tobacco_alcohol.alcohol_status"
-# names(CBR)[names(CBR) == "health_questionnaire_2-medical_illness_2"] = "history_illness.history_illness_self"
-# names(CBR)[names(CBR) == "health_questionnaire_1-medical_illness_1"] = "history_illness"
-# # names(CBR)[names(CBR) == "health_questionnaire_2-medical_illness_2"] = ""
-# # names(CBR)[names(CBR) == "health_questionnaire_3-surgery_2years"] = ""
-# # names(CBR)[names(CBR) == "health_questionnaire_3-joint_surgery"] = ""
-# # names(CBR)[names(CBR) == "SET-OF-medication_record"] = ""
-# # names(CBR)[names(CBR) == "genogram_1-note"] = ""
-# # names(CBR)[names(CBR) == "pulse_bp-systolic_left_arm"] = ""
-# # names(CBR)[names(CBR) == "pulse_bp-diastolic_left_arm"] = ""
-# names(CBR)[names(CBR) == "phy_neu_exam_1-height"] = "anthropometry.height"
-# names(CBR)[names(CBR) == "phy_neu_exam_1-head_circumference"] = "anthropometry.head_cir"
-# names(CBR)[names(CBR) == "phy_neu_exam_1-waistcirc_1"] = "anthropometry.wasit_cir"
-# names(CBR)[names(CBR) == "body_measurements1-weight"] = "anthropometry.weight"
-# names(CBR)[names(CBR) == "phy_neu_exam_1-hipcirc_1"] = "anthropometry.hip_cir"
-# 
-# CBR = subset(CBR, select = -history_illness)
-# CBR = subset(CBR, select = -Name)
-# CBR = subset(CBR, select = -villageid)
-# 
-# reference = as.data.frame(read.csv("GenomeIndia_Socio_demographics_V1_results.csv"))
-# 
-# CBR_odk=data.frame(matrix(ncol = ncol(reference), nrow = 0))
-# names(CBR_odk) = names(reference)
-# 
-# 
-# #read local ID to seq ID for swap
-# seq_local = read.table("randomids_localids_Feb2_2024.csv", sep = '\t', header = F)
-# colnames(seq_local)[colnames(seq_local) == "Barcode.ID"] ="Barcode"
-# CBRSeq = CBR[CBR$Barcode %in% seq_local$Barcode,]
-# 
-# CBRlocal <- merge(CBR, seq_local, by.x = "Barcode", by.y = "V1", all.x = TRUE)
-# 
-# CBRlocal = subset(CBRlocal, select = -Barcode)
-# 
-# CBRlocal<-CBRlocal[!(is.na(CBRlocal$Local.ID)),]
-# 
-# CBRlocal <- CBRlocal %>% select(Local.ID, everything())
-# names(CBRlocal)[names(CBRlocal) == "Local.ID"] <- "LocalID"
-# names(CBRlocal)[names(CBRlocal) == "MEMBERS_RELATIONSHIP_1"] <- "comments_signature.comments"
-# CBRlocal = subset(CBRlocal, select = -Centre)
-# CBRlocal = subset(CBRlocal, select = -Type.of.File)
-# CBRlocal = subset(CBRlocal, select = -`socio_demographics-your_religion`)
-# CBRlocal = subset(CBRlocal, select = -MEMBERS_OCCUPATION_1)
-# #CBRlocal = subset(CBRlocal, select = -`QUESTIONNAIRE_1_N_FAMILY_MEMBERS`)
-# CBRlocal = subset(CBRlocal, select = -`genogram_1-note`)
-# CBRlocal = subset(CBRlocal, select = -`nicotine_use_1-smoked_tobacco`)
-# CBRlocal = subset(CBRlocal, select = -`health_questionnaire_3-surgery_2years`)
-# CBRlocal = subset(CBRlocal, select = -`SET-OF-medication_record`)
-# CBRlocal = subset(CBRlocal, select = -`pulse_bp-diastolic_left_arm`)
-# CBRlocal = subset(CBRlocal, select = -`pulse_bp-systolic_left_arm`)
-# CBRlocal = subset(CBRlocal, select = -`alcohol_use_1a-currently_drink`)
-# CBRlocal = subset(CBRlocal, select = -`alcohol_use_1-consumed_alcohol`)
-# #CBRlocal = subset(CBRlocal, select = -`alcohol_use_1-consumed_alcohol`)
-# names(CBRlocal)[names(CBRlocal) == "body_measurements1-body_fat"] <- "anthropometry.body_fat"
-# # Merge data from 'other_df' into 'empty_df' based on common column names
-# 
-# CBRlocal$`socio_demographics.marital_status`[CBRlocal$`socio_demographics.marital_status`==0] = NA
-# CBRlocal$`health_questionnaire_3-joint_surgery`[CBRlocal$`health_questionnaire_3-joint_surgery`==0] = NA
-# 
-# CBRlocal$history_illness.history_illness_self <- ifelse(!is.na(CBRlocal$`health_questionnaire_3-joint_surgery`), 
-#                                                         paste(CBRlocal$history_illness.history_illness_self, CBRlocal$`health_questionnaire_3-joint_surgery`, sep = ", "), CBRlocal$history_illness.history_illness_self)
-# CBRlocal = subset(CBRlocal, select = -`health_questionnaire_3-joint_surgery`)
-# names(CBRlocal)[names(CBRlocal) == "LocalID"] <- "introduction.local_id_barcode"
-# # CBRlocal$history_illness.history_illness_self <- paste(CBRlocal$history_illness.history_illness_self, CBRlocal$`health_questionnaire_3-joint_surgery`, sep = ", ")
-# 
-# # Add 'surgery' after the second column if it contains NAs
-# #df$new_column[is.na(df$second_column)] <- paste(df$new_column[is.na(df$second_column)], "surgery", sep = " ")
-# 
-# 
-# cbr_merge <- merge(CBR_odk, CBRlocal, by = intersect(names(CBR_odk), names(CBRlocal)), all = TRUE)
-# 
-# #All Vokkaliga
-# #All ID mappings
 
 # Madia data --------------------------------------------------------------
 library(readxl)
@@ -2238,6 +1717,7 @@ ILSB_BBC_data_copy = ILSB_BBC_data
 ILSB_BBC_data_copy <- ILSB_BBC_data_copy %>% 
   pivot_wider(names_from = LabObservationName, values_from = Reading)
 
+ILSB_BBC_data_copy = subset(ILSB_BBC_data_copy, select = -Gender)
 # ILSB_BBC_data_copy$WBC_Total_White_Blood_Cell_Count = as.numeric(ILSB_BBC_data_copy$WBC_Total_White_Blood_Cell_Count) * 1000
 # ILSB_BBC_data_copy$Platelet_Count = as.numeric(ILSB_BBC_data_copy$Platelet_Count) * 1000
 # ILSB_BBC_data_copy$Absolute_Basophil_Count = as.numeric(ILSB_BBC_data_copy$Absolute_Basophil_Count) * 1000
@@ -2246,28 +1726,28 @@ ILSB_BBC_data_copy <- ILSB_BBC_data_copy %>%
 # ILSB_BBC_data_copy$Absolute_Monocyte_Count = as.numeric(ILSB_BBC_data_copy$Absolute_Monocyte_Count) * 1000
 # ILSB_BBC_data_copy$Absolute_Lymphocyte_Count = as.numeric(ILSB_BBC_data_copy$Absolute_Lymphocyte_Count) * 1000
 
-odk_main = read.table("GenomeIndia_Socio_demographics_V1_results(1).csv", header = T, sep = ",", fill = T, encoding = 'UTF-8')
-odk_main$localid = odk_main$introduction_1.local_id_manual
-odk_main$localid[odk_main$localid==""] = NA
-odk_main$localid = ifelse(is.na(odk_main$localid), odk_main$introduction.local_id_barcode, odk_main$localid)
+# odk_main = read.table("GenomeIndia_Socio_demographics_V1_results(1).csv", header = T, sep = ",", fill = T, encoding = 'UTF-8')
+# odk_main$localid = odk_main$introduction_1.local_id_manual
+# odk_main$localid[odk_main$localid==""] = NA
+# odk_main$localid = ifelse(is.na(odk_main$localid), odk_main$introduction.local_id_barcode, odk_main$localid)
 
 ILSB_ODK = odk_main[odk_main$localid %in% ILSB_BBC_data_copy$LocalID,]
-odk_main = subset(odk_main, select = -localid)
+#odk_main = subset(odk_main, select = -localid)
 
 ILSB_joined <- merge(ILSB_BBC_data_copy, ILSB_ODK, by.x = "LocalID", 
                      by.y = "localid", all.x = TRUE, all.y = TRUE)
 
-ILSB_joined$calc_age = ILSB_joined$name_dob_1.approx_age
-ILSB_joined$calc1 = ILSB_joined$calc_age
+ILSB_joined$age = ILSB_joined$name_dob_1.approx_age
+ILSB_joined$age_withBBC = ILSB_joined$age
 #ILSB_joined = subset(ILSB_joined, select = -Age)
-ILSB_joined = subset(ILSB_joined, select = -Gender)
+#ILSB_joined = subset(ILSB_joined, select = -Gender)
 #ILSB_joined = ILSB_joined[-which(ILSB_joined$LocalID=="ILSB/H/001101"),]
 #ILSB_joined = ILSB_joined[-which(ILSB_joined$LocalID=="ILSB/H/001186"),]
 ILSB_joined$center = "ILSB"
 ILSB_joined$region = "East"
 ILSB_joined$name_dob_1.ethnicity = "madia"
 
-names(ILSB_joined)[names(ILSB_joined) == "anthropometry.wasit_cir"] <- "anthropometry.waist_cir"
+#names(ILSB_joined)[names(ILSB_joined) == "anthropometry.wasit_cir"] <- "anthropometry.waist_cir"
 
 ILSB_joined <- ILSB_joined[, !colnames(ILSB_joined) %in% setdiff(colnames(ILSB_joined), colnames(ft))]
 
@@ -2277,8 +1757,13 @@ ILSB_joined = ILSB_joined %>%
   mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
 ILSB_joined<-ILSB_joined[names(ft)]
-names(ILSB_joined)[names(ILSB_joined) == "Immature_granulocytes.1"] = "Immature_granulocytes"
+ILSB_joined$introduction_1.examination_date = as.Date(ILSB_joined$introduction_1.examination_date, format = '%Y-%m-%d')
+ILSB_joined$name_dob_1.dob = NA
+#names(ILSB_joined)[names(ILSB_joined) == "Immature_granulocytes.1"] = "Immature_granulocytes"
+ILSB_joined$introduction_1.examination_date = as.character(ILSB_joined$introduction_1.examination_date)
+
 ft = rbind(ft, ILSB_joined)
+
 
 # Karn Kayastha data ------------------------------------------------------
 
@@ -2289,8 +1774,10 @@ NIBG_odk = subset(NIBG_odk, select = -SubmissionDate)
 colnames(NIBG_odk) <- gsub(x = colnames(NIBG_odk), pattern = "\\-", replacement = ":")  
 colnames(NIBG_odk) <- gsub(x = colnames(NIBG_odk), pattern = "\\:", replacement = ".")  
 
-
-odk_main = read.table("GenomeIndia_Socio_demographics_V1_results(1).csv", header = T, sep = ",", fill = T, encoding = 'UTF-8')
+names(NIBG_odk)[names(NIBG_odk)=="anthropometry.wasit_cir"] = "anthropometry.waist_cir"
+NIBG_odk$localid = NIBG_odk$introduction.local_id_barcode
+NIBG_odk$center = gsub("\\/.*","", NIBG_odk$localid)
+#odk_main = read.table("GenomeIndia_Socio_demographics_V1_results(1).csv", header = T, sep = ",", fill = T, encoding = 'UTF-8')
 
 
 if (all(colnames(odk_main) == colnames(NIBG_odk))) {
@@ -2335,17 +1822,21 @@ names(NIBG_BBC)[names(NIBG_BBC) == "LDL_CHOLESTEROL (mg/dL)"] <- "LDL"
 names(NIBG_BBC)[names(NIBG_BBC) == "CREATININE (mg/dL)"] <- "Creatinine"
 
 NIBG_joined <- merge(NIBG_BBC, NIBG_odk, by.x = "LocalID", 
-                     by.y = "introduction.local_id_barcode", all.x = TRUE, all.y = TRUE)
-#NIBG_joined$introduction_1.local_id_barcode = NIBG_joined$LocalID
+                     by.y = "localid", all.x = TRUE, all.y = TRUE)
 
-NIBG_joined$center = "NIBG"
-names(NIBG_joined)[names(NIBG_joined) == "anthropometry.wasit_cir"] <- "anthropometry.waist_cir"
-NIBG_joined$name_dob_1.ethnicity = "karn kayastha"
+NIBG_joined$name_dob_1.ethnicity = "karn_kayastha"
+NIBG_joined$name_dob_1.state= "orissa"
 NIBG_joined$region = "East"
+
 NIBG_joined$smoking_tobacco_alcohol.chewing_tobacco_status = NA
+NIBG_joined$smoking_tobacco_alcohol.alcohol_status[NIBG_joined$smoking_tobacco_alcohol.alcohol_status=="Yes"] = "current"
+NIBG_joined$smoking_tobacco_alcohol.alcohol_status[NIBG_joined$smoking_tobacco_alcohol.alcohol_status=="No"] = "never"
+NIBG_joined$smoking_tobacco_alcohol.smoking_status[NIBG_joined$smoking_tobacco_alcohol.smoking_status=="Yes"] = "current"
+NIBG_joined$smoking_tobacco_alcohol.smoking_status[NIBG_joined$smoking_tobacco_alcohol.smoking_status=="No"] = "never"
+
 NIBG_joined$name_dob_1.gender = tolower(NIBG_joined$name_dob_1.gender)
-NIBG_joined$calc_age = NIBG_joined$name_dob_1.approx_age
-NIBG_joined$calc1 = NIBG_joined$calc1
+NIBG_joined$age = NIBG_joined$name_dob_1.approx_age
+NIBG_joined$age_withBBC = NIBG_joined$age
 
 NIBG_joined <- NIBG_joined[, !colnames(NIBG_joined) %in% setdiff(colnames(NIBG_joined), colnames(ft))]
 
@@ -2355,9 +1846,13 @@ NIBG_joined = NIBG_joined %>%
   mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
 NIBG_joined<-NIBG_joined[names(ft)]
-NIBG_joined$LocalID = gsub("NIBG/O/", "NIBG/T/", NIBG_joined$LocalID)
-names(NIBG_joined)[names(NIBG_joined) == "Immature_granulocytes.1"] = "Immature_granulocytes"
+NIBG_joined$LocalID = gsub("NIBG/O/", "NIBG/T/", NIBG_joined$LocalID) #as clarified
+NIBG_joined$name_dob_1.dob = NA #Since it is empty
+NIBG_joined$introduction_1.examination_date = as.Date(NIBG_joined$introduction_1.examination_date, format = '%Y-%m-%d')
+NIBG_joined$introduction_1.examination_date = as.character(NIBG_joined$introduction_1.examination_date)
+#names(NIBG_joined)[names(NIBG_joined) == "Immature_granulocytes.1"] = "Immature_granulocytes"
 ft = rbind(ft, NIBG_joined)
+
 
 # Additional samples ------------------------------------------------------
 addnsamples = read.table("additionalsamples_April10.txt", sep = "~", header = T, fill = T)
@@ -2367,64 +1862,27 @@ addnsamples$center = gsub("\\/.*","", addnsamples$LocalID)
 addnsamples = addnsamples[-which(addnsamples$center=="SKIM"),]
 
 
-# ethnicity cleaning ------------------------------------------------------
+# Ethnicity cleaning - additional samples ---------------------------------
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="agarwal")]="aggarwal"
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="jat")]="jats"
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="bhil marwadi")]="bhil_meena"
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="bhilmeena")]="bhil_meena"
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="bhil meena")]="bhil_meena"
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="ansari")]="ansari_sunni"
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="paliwal brahmin")]="paliwal_brahmin"
+addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="bison horn maria")]="bison_horn_maria"
 
-
-addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity %in% c("0", "1", "2", "3", "4"))]=NA
-addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="")]=NA
-addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="agarwal")]="agrawal"
-addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="bhil marwadi")]="bhil"
-addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="bhilmeena")]="bhil meena"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="hakki pikki")]="hakkipikki"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="kokanastha")]="kokanastha brahmin"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="kani kubj brahmin")]="kanyakubj brahmin"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="kanyakubj")]="kanyakubj brahmin"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="agarwal")]="agrawal"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="desastha")]="desastha brahmin"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="odia brahmin")]="oriya brahmin"
-# addnsamples$name_dob_1.ethnicity[which(addnsamples$name_dob_1.ethnicity=="vaidiki")]="vaidiki brahmin"
-
-# addnsamples$name_dob_1.state = tolower(addnsamples$name_dob_1.state)
-# addnsamples$name_dob_1.state[which(addnsamples$name_dob_1.state=='others')] = NA
-addnsamples$name_dob_1.state[which(addnsamples$name_dob_1.state=='')] = NA
-#addnsamples$name_dob_1.other_state = tolower(addnsamples$name_dob_1.other_state)
-#addnsamples$name_dob_1.other_state[which(addnsamples$name_dob_1.other_state=='NA')] = NA
-#addnsamples$name_dob_1.state = ifelse(is.na(addnsamples$name_dob_1.state),addnsamples$name_dob_1.other_state, addnsamples$name_dob_1.state)
-
-# addnsamples = subset(addnsamples, select = -name_dob_1.other_state)
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="none"] = NA
-addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="J&K"] = "jammu_kashmir"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="bangalore, karnataka"] = "karnataka"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="chennai"] = "tamil_nadu"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="cheruanchary, kerala"] = "kerala"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="kadirur, kerala"] = "kerala"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="kalambur"] = "tamil_nadu"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="kanchipuram"] = "tamil_nadu"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="karvatenagaram, chittur dustrict, andra pradesh"] = "andra_pradesh"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="kottayam, kerala"] = "kerala"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="melkote, mandya district, , karnataka"] = "karnataka"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="muzaffarpur , bihar"] = "bihar"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="ochira ,kerala"] = "kerala"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="ochira, kerala"] = "kerala"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="telengana"] = "telangana"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="tellichrry, kerala"] = "kerala"
-# addnsamples$name_dob_1.state[addnsamples$name_dob_1.state=="yeliyur, karnataka"] = "karnataka"
-
+# Region ------------------------------------------------------------------
 
 addnsamples$region = ifelse(addnsamples$name_dob_1.state %in% c('andra_pradesh', 'karnataka', 'kerala','tamil_nadu', 'telangana'), "South", 
-                            ifelse(addnsamples$name_dob_1.state %in% c("arunachal_pradesh","assam", "manipur", "meghalaya", "mizoram"), "Northeast", 
+                            ifelse(addnsamples$name_dob_1.state %in% c("arunachal_pradesh","assam", "manipur", "meghalaya", "mizoram"), "North-East", 
                                    ifelse(addnsamples$name_dob_1.state %in% c("bihar", "jharkhand", "orissa", "west_bengal", "sikkim"), "East", 
                                           ifelse(addnsamples$name_dob_1.state %in% c("haryana", "himachal_pradesh", "jammu_kashmir", "punjab", "rajasthan", "Delhi", "delhi", "New Delhi", "new delhi"), "North", 
-                                                 ifelse(addnsamples$name_dob_1.state %in% c("gujarat", "maharashtra"), "Western",
+                                                 ifelse(addnsamples$name_dob_1.state %in% c("gujarat", "maharashtra"), "West",
                                                         ifelse(addnsamples$name_dob_1.state %in% c("madya_pradesh","chhattisgarh", "uttaranchal","uttar_pradesh"), "Central","Unknown"))))))
-
 
 # unnecessary columns removed ---------------------------------------------
 
-
-#addnsamples = subset(addnsamples, select = -CENTRE_FOR_BRAIN_RESEARCH_IISC_PACKAGE)
-#addnsamples = subset(addnsamples, select = -NAMES)
-#addnsamples = subset(addnsamples, select = -Names_._Matching)
 addnsamples = subset(addnsamples, select = -Collection_Center)
 #addnsamples = subset(addnsamples, select = -NON.HDL_CHOLESTEROL)
 #addnsamples = subset(addnsamples, select = -Calcium)
@@ -2460,118 +1918,21 @@ addnsamples = subset(addnsamples, select = -name_dob_1.caste)
 # Renaming columns --------------------------------------------------------
 
 names(addnsamples)[names(addnsamples) == "Chloride"] = "Cl._mEq.L"
-# Filling in values -------------------------------------------------------
-#ft$GLYCOSYLATED_HAEMOGLOBIN_in_. = as.numeric(ft$GLYCOSYLATED_HAEMOGLOBIN_in_.)
+names(addnsamples)[names(addnsamples) == "anthropometry.wasit_cir"] = "anthropometry.waist_cir"
+
 addnsamples$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(addnsamples$HbA1C_Glycosylated_Haemoglobin),
-                                           addnsamples$GLYCOSYLATED_HAEMOGLOBIN_in_., 
-                                           addnsamples$HbA1C_Glycosylated_Haemoglobin)
+                                                    addnsamples$GLYCOSYLATED_HAEMOGLOBIN_in_., 
+                                                    addnsamples$HbA1C_Glycosylated_Haemoglobin)
 addnsamples = subset(addnsamples, select = -GLYCOSYLATED_HAEMOGLOBIN_in_.)
 
-# addnsamples$Hematocrit = ifelse(is.na(addnsamples$Hematocrit), 
-#                        addnsamples$PCV_Packed_Cell_Volume, addnsamples$Hematocrit)
-# addnsamples$Absolute_Lymphocyte_Count = ifelse(is.na(addnsamples$Absolute_Lymphocyte_Count),
-#                                       addnsamples$TOTAL_LYMPHOCYTE_COUNT_1500.4000_cells.cu_mm,addnsamples$Absolute_Lymphocyte_Count)
-# addnsamples$A_G_Ratio_Albumin_Globulin= ifelse(is.na(addnsamples$A_G_Ratio_Albumin_Globulin), 
-#                                       addnsamples$A.GRatio, addnsamples$A_G_Ratio_Albumin_Globulin)
-addnsamples$A_G_Ratio_Albumin_Globulin= ifelse(is.na(addnsamples$A_G_Ratio_Albumin_Globulin), 
-                                               addnsamples$A_G_Ratio, addnsamples$A_G_Ratio_Albumin_Globulin)
-# addnsamples$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(addnsamples$WBC_Total_White_Blood_Cell_Count), 
-#                                              addnsamples$TLC, addnsamples$WBC_Total_White_Blood_Cell_Count)
-#addnsamples$Languages_to_speak = ifelse(is.na(addnsamples$Languages_to_speak), addnsamples$Laungages_to_Speak, addnsamples$Languages_to_speak)
-# addnsamples$RDW_Red_Cell_Distribution_Width = ifelse(is.na(addnsamples$RDW_Red_Cell_Distribution_Width), 
-#                                             addnsamples$RDW, addnsamples$RDW_Red_Cell_Distribution_Width)
-# addnsamples$Immature_granulocyte_perc = ifelse(is.na(addnsamples$Immature_granulocyte_perc), 
-#                                       addnsamples$Immature_granulocyte, addnsamples$Immature_granulocyte_perc)
-#addnsamples$Cl._mEq.L = ifelse(is.na(addnsamples$Cl._mEq.L), addnsamples$Chloride, addnsamples$Cl._mEq.L)
-#addnsamples$Estimated_Average_Glucose = ifelse(is.na(addnsamples$Estimated_Average_Glucose), addnsamples$MEAN_BLOOD_GLUCOSE_mg.dl, addnsamples$Estimated_Average_Glucose)
-#addnsamples$MCH_Mean_Corpuscular_Hb = ifelse(is.na(addnsamples$MCH_Mean_Corpuscular_Hb), addnsamples$MCH, addnsamples$MCH_Mean_Corpuscular_Hb)
-#addnsamples$MCH_Mean_Corpuscular_Hb = ifelse(is.na(addnsamples$MCH_Mean_Corpuscular_Hb), addnsamples$MCH_MeanCorpuscularHb, addnsamples$MCH_Mean_Corpuscular_Hb)
-addnsamples$MCHC_Mean_Corpuscular_Hb_Concn = ifelse(is.na(addnsamples$MCHC_Mean_Corpuscular_Hb_Concn), addnsamples$MCHC, addnsamples$MCHC_Mean_Corpuscular_Hb_Concn)
-#addnsamples$MCHC_Mean_Corpuscular_Hb_Concn = ifelse(is.na(addnsamples$MCHC_Mean_Corpuscular_Hb_Concn), addnsamples$MCHC_MeanCorpuscularHbConcn., addnsamples$MCHC_Mean_Corpuscular_Hb_Concn)
-#addnsamples$MCV_Mean_Corpuscular_Volume = ifelse(is.na(addnsamples$MCV_Mean_Corpuscular_Volume), addnsamples$MCV_MeanCorpuscularVolume, addnsamples$MCV_Mean_Corpuscular_Volume)
-addnsamples$MCV_Mean_Corpuscular_Volume = ifelse(is.na(addnsamples$MCV_Mean_Corpuscular_Volume), addnsamples$MCV, addnsamples$MCV_Mean_Corpuscular_Volume)
-# addnsamples$Absolute_Basophil_Count = ifelse(is.na(addnsamples$Absolute_Basophil_Count), 
-#                                     addnsamples$AbsoluteBasophilCount, addnsamples$Absolute_Basophil_Count)
-# addnsamples$Absolute_Eosinophil_Count = ifelse(is.na(addnsamples$Absolute_Eosinophil_Count), 
-#                                       addnsamples$AbsoluteEosinophilCount, addnsamples$Absolute_Eosinophil_Count)
-# addnsamples$Absolute_Neutrophil_Count = ifelse(is.na(addnsamples$Absolute_Neutrophil_Count), 
-#                                       addnsamples$AbsoluteNeutrophilsCount, addnsamples$Absolute_Neutrophil_Count)
-# addnsamples$Absolute_Lymphocyte_Count = ifelse(is.na(addnsamples$Absolute_Lymphocyte_Count), 
-#                                       addnsamples$AbsoluteLymphocyteCount, addnsamples$Absolute_Lymphocyte_Count)
-# addnsamples$Absolute_Monocyte_Count = ifelse(is.na(addnsamples$Absolute_Monocyte_Count), 
-#                                     addnsamples$AbsoluteMonocyteCount, addnsamples$Absolute_Monocyte_Count)
-# addnsamples$Alkaline_Phosphatase = ifelse(is.na(addnsamples$Alkaline_Phosphatase), 
-#                                  addnsamples$AlkalinePhosphatase, addnsamples$Alkaline_Phosphatase)
-# addnsamples$Gamma_GT_GGTP = ifelse(is.na(addnsamples$Gamma_GT_GGTP), 
-#                           addnsamples$GammaGT_GGTP, addnsamples$Gamma_GT_GGTP)
-# addnsamples$PCV_PackedCellVolume = ifelse(is.na(addnsamples$PCV_PackedCellVolume), 
-#                                  addnsamples$PCV_Automated_in_., addnsamples$PCV_PackedCellVolume)
-# addnsamples$SGOT_SGPT = ifelse(is.na(addnsamples$SGOT_SGPT), 
-#                       addnsamples$SGOT.SGPT, addnsamples$SGOT_SGPT)
-# addnsamples$CHOL_HDL_Ratio = ifelse(is.na(addnsamples$CHOL_HDL_Ratio), 
-#                            addnsamples$CHOL.HDLRATIO, addnsamples$CHOL_HDL_Ratio)
-#addnsamples$ESR = ifelse(is.na(addnsamples$ESR),addnsamples$ESR.ErythrocyteSedimentationRate.EDTA, addnsamples$ESR)
-# addnsamples$Estimated_Average_Glucose = ifelse(is.na(addnsamples$Estimated_Average_Glucose),
-#                                       addnsamples$EstimatedAverageGlucose_eAG, addnsamples$Estimated_Average_Glucose)
-# addnsamples$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(addnsamples$HbA1C_Glycosylated_Haemoglobin),
-#                                            addnsamples$HbA1C.GlycatedHaemoglobin, addnsamples$HbA1C_Glycosylated_Haemoglobin)
-# addnsamples$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(addnsamples$HbA1C_Glycosylated_Haemoglobin),
-#                                            addnsamples$GLYCOSYLATED_Hb_IFCC, addnsamples$HbA1C_Glycosylated_Haemoglobin)
-# addnsamples$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(addnsamples$HbA1C_Glycosylated_Haemoglobin),
-#                                                     addnsamples$GLYCOSYLATED_HAEMOGLOBIN_in_., addnsamples$HbA1C_Glycosylated_Haemoglobin)
-# addnsamples$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(addnsamples$HbA1C_Glycosylated_Haemoglobin),
-#                                                         addnsamples$HbA1c, addnsamples$HbA1C_Glycosylated_Haemoglobin)
 
-#addnsamples$HB_Haemoglobin = ifelse(is.na(addnsamples$HB_Haemoglobin),addnsamples$Haemoglobin_Hb, addnsamples$HB_Haemoglobin)
-#addnsamples$HB_Haemoglobin = ifelse(is.na(addnsamples$HB_Haemoglobin),addnsamples$Hb_Hemoglobin, addnsamples$HB_Haemoglobin)
-#addnsamples$LDL = ifelse(is.na(addnsamples$LDL),addnsamples$LDLCholesterol, addnsamples$LDL)
-#addnsamples$HDL = ifelse(is.na(addnsamples$HDL),addnsamples$HDLCholesterol, addnsamples$HDL)
-# addnsamples$VLDL = ifelse(is.na(addnsamples$VLDL),addnsamples$VLDLCholesterol, addnsamples$VLDL)
-# addnsamples$FBS_Fasting_Blood_Glucose = ifelse(is.na(addnsamples$FBS_Fasting_Blood_Glucose),
-#                                       addnsamples$Glucosefasting, addnsamples$FBS_Fasting_Blood_Glucose)
-# addnsamples$Platelet_Count = ifelse(is.na(addnsamples$Platelet_Count),addnsamples$Plateletcount, addnsamples$Platelet_Count)
-#addnsamples$RBS = ifelse(is.na(addnsamples$RBS),addnsamples$GLUCOSE._RANDOM_R_._PLASMA, addnsamples$RBS)
-# addnsamples$Urea = ifelse(is.na(addnsamples$Urea),addnsamples$UreaSerum, addnsamples$Urea)
-#addnsamples$MPV_Mean_Platelet_Volume = ifelse(is.na(addnsamples$MPV_Mean_Platelet_Volume), addnsamples$MPV, addnsamples$MPV_Mean_Platelet_Volume)
-# addnsamples$MPV_Mean_Platelet_Volume = ifelse(is.na(addnsamples$MPV_Mean_Platelet_Volume), addnsamples$MPV_MeanPlateletVolume, addnsamples$MPV_Mean_Platelet_Volume)
-# addnsamples$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(addnsamples$WBC_Total_White_Blood_Cell_Count),
-#                                              addnsamples$Total_Leucocytes_Count_in_th.cumm, addnsamples$WBC_Total_White_Blood_Cell_Count)
+# another round of empty column removal -----------------------------------
 
-# addnsamples$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(addnsamples$WBC_Total_White_Blood_Cell_Count),
-#                                              addnsamples$TOTAL_LEUCOCYTE_COUNT_cu_mm, addnsamples$WBC_Total_White_Blood_Cell_Count)
-#addnsamples$Absolute_Lymphocyte_Count = ifelse(is.na(addnsamples$Absolute_Lymphocyte_Count), addnsamples$TOTAL_LYMPHOCYTE_COUNT_cu_mm, addnsamples$Absolute_Lymphocyte_Count)
-# addnsamples$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(addnsamples$WBC_Total_White_Blood_Cell_Count),
-#                                              addnsamples$TOTAL_WBC_COUNT_Automated_in_th.cumm,addnsamples$WBC_Total_White_Blood_Cell_Count)
-# addnsamples$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(addnsamples$WBC_Total_White_Blood_Cell_Count),
-#                                              addnsamples$TotalLeucocytes_WBC_count,addnsamples$WBC_Total_White_Blood_Cell_Count)
-#addnsamples$NonHDL_Cholesterol = ifelse(is.na(addnsamples$NonHDL_Cholesterol), addnsamples$nonHDL, addnsamples$NonHDL_Cholesterol)
-# addnsamples$NonHDL_Cholesterol = ifelse(is.na(addnsamples$NonHDL_Cholesterol), addnsamples$NonHDLCholesterol, addnsamples$NonHDL_Cholesterol)
-#addnsamples$Hematocrit = ifelse(is.na(addnsamples$Hematocrit), addnsamples$PCV_., addnsamples$Hematocrit)
-#addnsamples$Hematocrit = ifelse(is.na(addnsamples$Hematocrit), addnsamples$HCT, addnsamples$Hematocrit)
-# addnsamples$Hematocrit = ifelse(is.na(addnsamples$Hematocrit), addnsamples$PCV_PackedCellVolume, addnsamples$Hematocrit)
-# # addnsamples$Absolute_Basophil_Count = ifelse(is.na(addnsamples$Absolute_Basophil_Count), addnsamples$BASO...18, addnsamples$Absolute_Basophil_Count)
-# addnsamples$Absolute_Basophil_Count = ifelse(is.na(addnsamples$Absolute_Basophil_Count), addnsamples$BASO...23, addnsamples$Absolute_Basophil_Count)
-#addnsamples$Absolute_Eosinophil_Count = ifelse(is.na(addnsamples$Absolute_Eosinophil_Count), addnsamples$EO...17, addnsamples$Absolute_Eosinophil_Count)
-#addnsamples$Absolute_Eosinophil_Count = ifelse(is.na(addnsamples$Absolute_Eosinophil_Count), addnsamples$EO...22, addnsamples$Absolute_Eosinophil_Count)
-#addnsamples$Absolute_Lymphocyte_Count = ifelse(is.na(addnsamples$Absolute_Lymphocyte_Count), addnsamples$LYMPH...20, addnsamples$Absolute_Lymphocyte_Count)
-#addnsamples$Absolute_Lymphocyte_Count = ifelse(is.na(addnsamples$Absolute_Lymphocyte_Count), addnsamples$LYMPH...15, addnsamples$Absolute_Lymphocyte_Count)
-#addnsamples$Absolute_Monocyte_Count = ifelse(is.na(addnsamples$Absolute_Monocyte_Count), addnsamples$MONO...16, addnsamples$Absolute_Monocyte_Count)
-#addnsamples$Absolute_Monocyte_Count = ifelse(is.na(addnsamples$Absolute_Monocyte_Count), addnsamples$MONO...21, addnsamples$Absolute_Monocyte_Count)
-#addnsamples$Absolute_Neutrophil_Count = ifelse(is.na(addnsamples$Absolute_Neutrophil_Count), addnsamples$NEUT...19, addnsamples$Absolute_Neutrophil_Count)
-#addnsamples$Absolute_Neutrophil_Count = ifelse(is.na(addnsamples$Absolute_Neutrophil_Count), addnsamples$NEUT...14, addnsamples$Absolute_Neutrophil_Count)
-#addnsamples$Indirect_Bilirubin = ifelse(is.na(addnsamples$Indirect_Bilirubin), addnsamples$Bilirubin.Indirect, addnsamples$Indirect_Bilirubin)
-#addnsamples$CRP = ifelse(is.na(addnsamples$CRP), addnsamples$CRP_mg.L, addnsamples$CRP)
-#addnsamples$LDL_HDL_Ratio = ifelse(is.na(addnsamples$LDL_HDL_Ratio), addnsamples$LDL.HDLRATIO, addnsamples$LDL_HDL_Ratio)
-#addnsamples$NLR_4 = ifelse(is.na(addnsamples$NLR_4), addnsamples$Neutrophils_Lymphocyte_Ratio, addnsamples$NLR_4)
-addnsamples$T3_Total = ifelse(is.na(addnsamples$T3_Total), addnsamples$T3, addnsamples$T3_Total)
-addnsamples$T4_Total = ifelse(is.na(addnsamples$T4_Total), addnsamples$T4, addnsamples$T4_Total)
+emptycolumns = colSums(is.na(addnsamples)|addnsamples=="")==nrow(addnsamples)
+addnsamples = addnsamples[ ,!emptycolumns]
 
-colnames(addnsamples)[colnames(addnsamples) == "NRBC."] ="NRBC_percent"
-colnames(addnsamples)[colnames(addnsamples) == "anthropometry.wasit_cir"] ="anthropometry.waist_cir"
 
-addnsamples$FBS_Fasting_Blood_Glucose = ifelse(is.na(addnsamples$FBS_Fasting_Blood_Glucose),
-                                               addnsamples$FBS, addnsamples$FBS_Fasting_Blood_Glucose)
-
+# filling in with IGIB and ILSB readins -----------------------------------
 
 addnsamples$WBC_Total_White_Blood_Cell_Count[addnsamples$LocalID %in% IGIB$LocalID] <- IGIB$WBC_Total_White_Blood_Cell_Count[match(addnsamples$LocalID[addnsamples$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
 addnsamples$Platelet_Count[addnsamples$LocalID %in% IGIB$LocalID] <- IGIB$Platelet_Count[match(addnsamples$LocalID[addnsamples$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
@@ -2601,13 +1962,19 @@ addnsamples$MCHC_Mean_Corpuscular_Hb_Concn[addnsamples$LocalID %in% ILSB$LocalID
 addnsamples$MCH_Mean_Corpuscular_Hb[addnsamples$LocalID %in% ILSB$LocalID] <- ILSB$MCH_Mean_Corpuscular_Hb[match(addnsamples$LocalID[addnsamples$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 addnsamples$RDW_Red_Cell_Distribution_Width[addnsamples$LocalID %in% ILSB$LocalID] <- ILSB$RDW_Red_Cell_Distribution_Width[match(addnsamples$LocalID[addnsamples$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 addnsamples$MPV_Mean_Platelet_Volume[addnsamples$LocalID %in% ILSB$LocalID] <- ILSB$MPV_Mean_Platelet_Volume[match(addnsamples$LocalID[addnsamples$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
-
-
 # Age resolution ----------------------------------------------------------
 
-addnsamples$calc_age = addnsamples$name_dob_1.approx_age
-addnsamples$calc_age = ifelse(is.na(addnsamples$calc_age), addnsamples$name_dob_1.age_on_interview,
-                              addnsamples$calc_age)
+addnsamples$age = addnsamples$name_dob_1.approx_age
+addnsamples$age = ifelse(is.na(addnsamples$age), addnsamples$name_dob_1.age_on_interview,
+                              addnsamples$age)
+addnsamples$age[addnsamples$age<18] = NA
+addnsamples$age_withBBC = addnsamples$age
+
+# date resolution ---------------------------------------------------------
+
+addnsamples$name_dob_1.dob = gsub('/', '-', addnsamples$name_dob_1.dob)
+addnsamples$name_dob_1.dob = as.Date(parse_date(addnsamples$name_dob_1.dob))
+addnsamples$introduction_1.examination_date = as.Date(parse_date(addnsamples$introduction_1.examination_date))
 
 
 # New columns for rbind ---------------------------------------------------
@@ -2620,7 +1987,9 @@ addnsamples = addnsamples %>%
   mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
 addnsamples<-addnsamples[names(ft)]
-names(addnsamples)[names(addnsamples) == "Immature_granulocytes.1"] = "Immature_granulocytes"
+addnsamples$name_dob_1.dob = as.character(addnsamples$name_dob_1.dob)
+addnsamples$introduction_1.examination_date = as.character(addnsamples$introduction_1.examination_date)
+#names(addnsamples)[names(addnsamples) == "Immature_granulocytes.1"] = "Immature_granulocytes"
 
 ft = rbind(ft, addnsamples)
 
@@ -2628,62 +1997,54 @@ ft = rbind(ft, addnsamples)
 missingresolved = read.table("missingresolved_April4.txt", sep = "~", header = T)
 
 missingresolved$center = gsub("\\/.*","", missingresolved$LocalID)
+missingresolved = subset(missingresolved, select = -center.x)
+missingresolved = subset(missingresolved, select = -center.y)
 missingresolved = missingresolved[-which(missingresolved$center=="SKIM"),]
 emptycolumns = colSums(is.na(missingresolved)|missingresolved=="")==nrow(missingresolved)
 missingresolved = missingresolved[ ,!emptycolumns]
 
-# ethnicity cleaning ------------------------------------------------------
 
+# Ethnicity cleaning ------------------------------------------------------
 
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity %in% c("0", "1", "2", "3", "4"))]=NA
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="female")]=NA
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="sandiyala")]="saryuparin brahmin"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="saryuparin")]="saryuparin brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="female")]='iyengar'
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="agarwal")]='aggarwal'
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="bison horn maria")]='bison_horn_maria'
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="desastha")]="deshastha_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="garhwali brahmin")]='garhwali_brahmin'
 missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="hakki pikiki")]="hakkipikki"
 missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="hakki pikki")]="hakkipikki"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="kokanastha")]="kokanastha brahmin"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="kani kubj brahmin")]="kanyakubj brahmin"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="kanyakubj")]="kanyakubj brahmin"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="agarwal")]="agrawal"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="desastha")]="desastha brahmin"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="odia brahmin")]="oriya brahmin"
-missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="vaidiki")]="vaidiki brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="jat")]='jats'
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="koli")]='kolis'
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="kani kubj brahmin")]="kanyakubj_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="kanyakubj")]="kanyakubj_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="kokanastha")]="konkonastha_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="kurmi mahato")]='kudmi_mahato'
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="lingayats")]='lingayath'
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="odia brahmin")]="oriya_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="oriya brahmin")]="oriya_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="sandiyala")]="saryuparin_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="saryuparin")]="saryuparin_brahmin"
+missingresolved$name_dob_1.ethnicity[which(missingresolved$name_dob_1.ethnicity=="vaidiki")]="vaidiki_brahmin"
+
 
 # region cleaning ---------------------------------------------------------
 
 
 missingresolved$name_dob_1.state = tolower(missingresolved$name_dob_1.state)
 missingresolved$name_dob_1.state[which(missingresolved$name_dob_1.state=='others')] = NA
-missingresolved$name_dob_1.state[which(missingresolved$name_dob_1.state=='NA')] = NA
 missingresolved$name_dob_1.other_state = tolower(missingresolved$name_dob_1.other_state)
-missingresolved$name_dob_1.other_state[which(missingresolved$name_dob_1.other_state=='NA')] = NA
+missingresolved$name_dob_1.other_state[which(missingresolved$name_dob_1.other_state=='none')] = NA
 missingresolved$name_dob_1.state = ifelse(is.na(missingresolved$name_dob_1.state),missingresolved$name_dob_1.other_state, missingresolved$name_dob_1.state)
 
 missingresolved = subset(missingresolved, select = -name_dob_1.other_state)
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="none"] = NA
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="bangalore"] = "karnataka"
 missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="bangalore, karnataka"] = "karnataka"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="chennai"] = "tamil_nadu"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="cheruanchary, kerala"] = "kerala"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="kadirur, kerala"] = "kerala"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="kalambur"] = "tamil_nadu"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="kanchipuram"] = "tamil_nadu"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="karvatenagaram, chittur dustrict, andra pradesh"] = "andra_pradesh"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="kottayam, kerala"] = "kerala"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="melkote, mandya district, , karnataka"] = "karnataka"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="muzaffarpur , bihar"] = "bihar"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="ochira ,kerala"] = "kerala"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="ochira, kerala"] = "kerala"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="telengana"] = "telangana"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="tellichrry, kerala"] = "kerala"
-missingresolved$name_dob_1.state[missingresolved$name_dob_1.state=="yeliyur, karnataka"] = "karnataka"
 
 
 missingresolved$region = ifelse(missingresolved$name_dob_1.state %in% c('andra_pradesh', 'karnataka', 'kerala','tamil_nadu', 'telangana'), "South", 
-                                ifelse(missingresolved$name_dob_1.state %in% c("arunachal_pradesh","assam", "manipur", "meghalaya", "mizoram"), "Northeast", 
+                                ifelse(missingresolved$name_dob_1.state %in% c("arunachal_pradesh","assam", "manipur", "meghalaya", "mizoram"), "North-East", 
                                        ifelse(missingresolved$name_dob_1.state %in% c("bihar", "jharkhand", "orissa", "west_bengal", "sikkim"), "East", 
                                               ifelse(missingresolved$name_dob_1.state %in% c("haryana", "himachal_pradesh", "jammu_kashmir", "punjab", "rajasthan", "Delhi", "delhi", "New Delhi", "new delhi"), "North", 
-                                                     ifelse(missingresolved$name_dob_1.state %in% c("gujarat", "maharashtra"), "Western",
+                                                     ifelse(missingresolved$name_dob_1.state %in% c("gujarat", "maharashtra"), "West",
                                                             ifelse(missingresolved$name_dob_1.state %in% c("madya_pradesh","chhattisgarh", "uttaranchal","uttar_pradesh"), "Central","Unknown"))))))
 
 # removing unnecessary columns --------------------------------------------
@@ -2731,7 +2092,7 @@ missingresolved = subset(missingresolved, select = -name_dob_1.caste)
 # Replacing values --------------------------------------------------------
 missingresolved$IG_0.0.3 = as.numeric(missingresolved$IG_0.0.3)
 missingresolved$Immature_granulocyte_perc = ifelse(is.na(missingresolved$Immature_granulocyte_perc),
-                                      missingresolved$IG_0.0.3, missingresolved$Immature_granulocyte_perc)
+                                                   missingresolved$IG_0.0.3, missingresolved$Immature_granulocyte_perc)
 missingresolved = subset(missingresolved, select = -IG_0.0.3)
 
 missingresolved$Iron = as.numeric(missingresolved$Iron)
@@ -2740,373 +2101,202 @@ missingresolved = subset(missingresolved, select = -Iron)
 
 missingresolved$Hematocrit = ifelse(is.na(missingresolved$Hematocrit), 
                                     missingresolved$PCV_Packed_Cell_Volume, missingresolved$Hematocrit)
+missingresolved = subset(missingresolved, select = -PCV_Packed_Cell_Volume)
 missingresolved$Absolute_Lymphocyte_Count = ifelse(is.na(missingresolved$Absolute_Lymphocyte_Count),
                                                    missingresolved$TOTAL_LYMPHOCYTE_COUNT_1500.4000_cells.cu_mm,missingresolved$Absolute_Lymphocyte_Count)
+missingresolved = subset(missingresolved, select = -TOTAL_LYMPHOCYTE_COUNT_1500.4000_cells.cu_mm)
 missingresolved$A_G_Ratio_Albumin_Globulin= ifelse(is.na(missingresolved$A_G_Ratio_Albumin_Globulin), 
                                                    missingresolved$A.GRatio, missingresolved$A_G_Ratio_Albumin_Globulin)
+missingresolved = subset(missingresolved, select = -A.GRatio)
 missingresolved$A_G_Ratio_Albumin_Globulin= ifelse(is.na(missingresolved$A_G_Ratio_Albumin_Globulin), 
                                                    missingresolved$A_G_Ratio, missingresolved$A_G_Ratio_Albumin_Globulin)
-# missingresolved$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(missingresolved$WBC_Total_White_Blood_Cell_Count), 
-#                                              missingresolved$TLC, missingresolved$WBC_Total_White_Blood_Cell_Count)
-#missingresolved$Languages_to_speak = ifelse(is.na(missingresolved$Languages_to_speak), missingresolved$Laungages_to_Speak, missingresolved$Languages_to_speak)
+missingresolved = subset(missingresolved, select = -A_G_Ratio)
 missingresolved$RDW_Red_Cell_Distribution_Width = ifelse(is.na(missingresolved$RDW_Red_Cell_Distribution_Width), 
                                                          missingresolved$RDW, missingresolved$RDW_Red_Cell_Distribution_Width)
+missingresolved = subset(missingresolved, select = -RDW)
 missingresolved$Immature_granulocyte_perc = ifelse(is.na(missingresolved$Immature_granulocyte_perc), 
                                                    missingresolved$Immature_granulocyte, missingresolved$Immature_granulocyte_perc)
+missingresolved = subset(missingresolved, select = -Immature_granulocyte)
 missingresolved$Cl._mEq.L = ifelse(is.na(missingresolved$Cl._mEq.L), missingresolved$Chloride, missingresolved$Cl._mEq.L)
+missingresolved = subset(missingresolved, select = -Chloride)
 missingresolved$Estimated_Average_Glucose = ifelse(is.na(missingresolved$Estimated_Average_Glucose), missingresolved$MEAN_BLOOD_GLUCOSE_mg.dl, missingresolved$Estimated_Average_Glucose)
+missingresolved = subset(missingresolved, select = -MEAN_BLOOD_GLUCOSE_mg.dl)
 missingresolved$MCH_Mean_Corpuscular_Hb = ifelse(is.na(missingresolved$MCH_Mean_Corpuscular_Hb), missingresolved$MCH, missingresolved$MCH_Mean_Corpuscular_Hb)
+missingresolved = subset(missingresolved, select = -MCH)
 missingresolved$MCH_Mean_Corpuscular_Hb = ifelse(is.na(missingresolved$MCH_Mean_Corpuscular_Hb), missingresolved$MCH_MeanCorpuscularHb, missingresolved$MCH_Mean_Corpuscular_Hb)
+missingresolved = subset(missingresolved, select = -MCH_MeanCorpuscularHb)
 missingresolved$MCHC_Mean_Corpuscular_Hb_Concn = ifelse(is.na(missingresolved$MCHC_Mean_Corpuscular_Hb_Concn), missingresolved$MCHC, missingresolved$MCHC_Mean_Corpuscular_Hb_Concn)
+missingresolved = subset(missingresolved, select = -MCHC)
 missingresolved$MCHC_Mean_Corpuscular_Hb_Concn = ifelse(is.na(missingresolved$MCHC_Mean_Corpuscular_Hb_Concn), missingresolved$MCHC_MeanCorpuscularHbConcn., missingresolved$MCHC_Mean_Corpuscular_Hb_Concn)
+missingresolved = subset(missingresolved, select = -MCHC_MeanCorpuscularHbConcn.)
 missingresolved$MCV_Mean_Corpuscular_Volume = ifelse(is.na(missingresolved$MCV_Mean_Corpuscular_Volume), missingresolved$MCV_MeanCorpuscularVolume, missingresolved$MCV_Mean_Corpuscular_Volume)
+missingresolved = subset(missingresolved, select = -MCV_MeanCorpuscularVolume)
 missingresolved$MCV_Mean_Corpuscular_Volume = ifelse(is.na(missingresolved$MCV_Mean_Corpuscular_Volume), missingresolved$MCV, missingresolved$MCV_Mean_Corpuscular_Volume)
+missingresolved = subset(missingresolved, select = -MCV)
 missingresolved$Absolute_Basophil_Count = ifelse(is.na(missingresolved$Absolute_Basophil_Count), 
                                                  missingresolved$AbsoluteBasophilCount, missingresolved$Absolute_Basophil_Count)
+missingresolved = subset(missingresolved, select = -AbsoluteBasophilCount)
 missingresolved$Absolute_Eosinophil_Count = ifelse(is.na(missingresolved$Absolute_Eosinophil_Count), 
                                                    missingresolved$AbsoluteEosinophilCount, missingresolved$Absolute_Eosinophil_Count)
+missingresolved = subset(missingresolved, select = -AbsoluteEosinophilCount)
 missingresolved$Absolute_Neutrophil_Count = ifelse(is.na(missingresolved$Absolute_Neutrophil_Count), 
                                                    missingresolved$AbsoluteNeutrophilsCount, missingresolved$Absolute_Neutrophil_Count)
+missingresolved = subset(missingresolved, select = -AbsoluteNeutrophilsCount)
 missingresolved$Absolute_Lymphocyte_Count = ifelse(is.na(missingresolved$Absolute_Lymphocyte_Count), 
                                                    missingresolved$AbsoluteLymphocyteCount, missingresolved$Absolute_Lymphocyte_Count)
+missingresolved = subset(missingresolved, select = -AbsoluteLymphocyteCount)
 missingresolved$Absolute_Monocyte_Count = ifelse(is.na(missingresolved$Absolute_Monocyte_Count), 
                                                  missingresolved$AbsoluteMonocyteCount, missingresolved$Absolute_Monocyte_Count)
+missingresolved = subset(missingresolved, select = -AbsoluteMonocyteCount)
 missingresolved$Alkaline_Phosphatase = ifelse(is.na(missingresolved$Alkaline_Phosphatase), 
                                               missingresolved$AlkalinePhosphatase, missingresolved$Alkaline_Phosphatase)
+missingresolved = subset(missingresolved, select = -AlkalinePhosphatase)
 missingresolved$Gamma_GT_GGTP = ifelse(is.na(missingresolved$Gamma_GT_GGTP), 
                                        missingresolved$GammaGT_GGTP, missingresolved$Gamma_GT_GGTP)
-# missingresolved$PCV_PackedCellVolume = ifelse(is.na(missingresolved$PCV_PackedCellVolume), 
-#                                  missingresolved$PCV_Automated_in_., missingresolved$PCV_PackedCellVolume)
+missingresolved = subset(missingresolved, select = -GammaGT_GGTP)
 missingresolved$SGOT_SGPT = ifelse(is.na(missingresolved$SGOT_SGPT), 
                                    missingresolved$SGOT.SGPT, missingresolved$SGOT_SGPT)
+missingresolved = subset(missingresolved, select = -SGOT.SGPT)
 missingresolved$CHOL_HDL_Ratio = ifelse(is.na(missingresolved$CHOL_HDL_Ratio), 
                                         missingresolved$CHOL.HDLRATIO, missingresolved$CHOL_HDL_Ratio)
+missingresolved = subset(missingresolved, select = -CHOL.HDLRATIO)
 missingresolved$ESR = ifelse(is.na(missingresolved$ESR),missingresolved$ESR.ErythrocyteSedimentationRate.EDTA, missingresolved$ESR)
+missingresolved = subset(missingresolved, select = -ESR.ErythrocyteSedimentationRate.EDTA)
 missingresolved$Estimated_Average_Glucose = ifelse(is.na(missingresolved$Estimated_Average_Glucose),
                                                    missingresolved$EstimatedAverageGlucose_eAG, missingresolved$Estimated_Average_Glucose)
+missingresolved = subset(missingresolved, select = -EstimatedAverageGlucose_eAG)
 missingresolved$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(missingresolved$HbA1C_Glycosylated_Haemoglobin),
                                                         missingresolved$HbA1C.GlycatedHaemoglobin, missingresolved$HbA1C_Glycosylated_Haemoglobin)
+missingresolved = subset(missingresolved, select = -HbA1C.GlycatedHaemoglobin)
 # missingresolved$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(missingresolved$HbA1C_Glycosylated_Haemoglobin),
 #                                            missingresolved$GLYCOSYLATED_Hb_IFCC, missingresolved$HbA1C_Glycosylated_Haemoglobin)
 missingresolved$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(missingresolved$HbA1C_Glycosylated_Haemoglobin),
                                                         missingresolved$GLYCOSYLATED_HAEMOGLOBIN_in_., missingresolved$HbA1C_Glycosylated_Haemoglobin)
+missingresolved = subset(missingresolved, select = -GLYCOSYLATED_HAEMOGLOBIN_in_.)
 missingresolved$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(missingresolved$HbA1C_Glycosylated_Haemoglobin),
                                                         missingresolved$HbA1c, missingresolved$HbA1C_Glycosylated_Haemoglobin)
+missingresolved = subset(missingresolved, select = -HbA1c)
 
 #missingresolved$HB_Haemoglobin = ifelse(is.na(missingresolved$HB_Haemoglobin),missingresolved$Haemoglobin_Hb, missingresolved$HB_Haemoglobin)
 missingresolved$HB_Haemoglobin = ifelse(is.na(missingresolved$HB_Haemoglobin),missingresolved$Hb_Hemoglobin, missingresolved$HB_Haemoglobin)
+missingresolved = subset(missingresolved, select = -Hb_Hemoglobin)
 missingresolved$LDL = ifelse(is.na(missingresolved$LDL),missingresolved$LDLCholesterol, missingresolved$LDL)
+missingresolved = subset(missingresolved, select = -LDLCholesterol)
 missingresolved$HDL = ifelse(is.na(missingresolved$HDL),missingresolved$HDLCholesterol, missingresolved$HDL)
+missingresolved = subset(missingresolved, select = -HDLCholesterol)
 missingresolved$VLDL = ifelse(is.na(missingresolved$VLDL),missingresolved$VLDLCholesterol, missingresolved$VLDL)
+missingresolved = subset(missingresolved, select = -VLDLCholesterol)
 missingresolved$FBS_Fasting_Blood_Glucose = ifelse(is.na(missingresolved$FBS_Fasting_Blood_Glucose),
                                                    missingresolved$Glucosefasting, missingresolved$FBS_Fasting_Blood_Glucose)
+missingresolved = subset(missingresolved, select = -Glucosefasting)
 missingresolved$Platelet_Count = ifelse(is.na(missingresolved$Platelet_Count),missingresolved$Plateletcount, missingresolved$Platelet_Count)
+missingresolved = subset(missingresolved, select = -Plateletcount)
 #missingresolved$RBS = ifelse(is.na(missingresolved$RBS),missingresolved$GLUCOSE._RANDOM_R_._PLASMA, missingresolved$RBS)
 missingresolved$Urea = ifelse(is.na(missingresolved$Urea),missingresolved$UreaSerum, missingresolved$Urea)
+missingresolved = subset(missingresolved, select = -UreaSerum)
 #missingresolved$MPV_Mean_Platelet_Volume = ifelse(is.na(missingresolved$MPV_Mean_Platelet_Volume), missingresolved$MPV, missingresolved$MPV_Mean_Platelet_Volume)
 missingresolved$MPV_Mean_Platelet_Volume = ifelse(is.na(missingresolved$MPV_Mean_Platelet_Volume), missingresolved$MPV_MeanPlateletVolume, missingresolved$MPV_Mean_Platelet_Volume)
-# missingresolved$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(missingresolved$WBC_Total_White_Blood_Cell_Count),
-#                                              missingresolved$Total_Leucocytes_Count_in_th.cumm, missingresolved$WBC_Total_White_Blood_Cell_Count)
-
-# missingresolved$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(missingresolved$WBC_Total_White_Blood_Cell_Count),
-#                                              missingresolved$TOTAL_LEUCOCYTE_COUNT_cu_mm, missingresolved$WBC_Total_White_Blood_Cell_Count)
-#missingresolved$Absolute_Lymphocyte_Count = ifelse(is.na(missingresolved$Absolute_Lymphocyte_Count), missingresolved$TOTAL_LYMPHOCYTE_COUNT_cu_mm, missingresolved$Absolute_Lymphocyte_Count)
-# missingresolved$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(missingresolved$WBC_Total_White_Blood_Cell_Count),
-#                                              missingresolved$TOTAL_WBC_COUNT_Automated_in_th.cumm,missingresolved$WBC_Total_White_Blood_Cell_Count)
+missingresolved = subset(missingresolved, select = -MPV_MeanPlateletVolume)
 missingresolved$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(missingresolved$WBC_Total_White_Blood_Cell_Count),
                                                           missingresolved$TotalLeucocytes_WBC_count,missingresolved$WBC_Total_White_Blood_Cell_Count)
+missingresolved = subset(missingresolved, select = -TotalLeucocytes_WBC_count)
 #missingresolved$NonHDL_Cholesterol = ifelse(is.na(missingresolved$NonHDL_Cholesterol), missingresolved$nonHDL, missingresolved$NonHDL_Cholesterol)
 missingresolved$NonHDL_Cholesterol = ifelse(is.na(missingresolved$NonHDL_Cholesterol), missingresolved$NonHDLCholesterol, missingresolved$NonHDL_Cholesterol)
+missingresolved = subset(missingresolved, select = -NonHDLCholesterol)
 #missingresolved$Hematocrit = ifelse(is.na(missingresolved$Hematocrit), missingresolved$PCV_., missingresolved$Hematocrit)
 #missingresolved$Hematocrit = ifelse(is.na(missingresolved$Hematocrit), missingresolved$HCT, missingresolved$Hematocrit)
 missingresolved$Hematocrit = ifelse(is.na(missingresolved$Hematocrit), missingresolved$PCV_PackedCellVolume, missingresolved$Hematocrit)
+missingresolved = subset(missingresolved, select = -PCV_PackedCellVolume)
 missingresolved$Absolute_Basophil_Count = ifelse(is.na(missingresolved$Absolute_Basophil_Count), missingresolved$BASO...18, missingresolved$Absolute_Basophil_Count)
+missingresolved = subset(missingresolved, select = -BASO...18)
 missingresolved$Absolute_Basophil_Count = ifelse(is.na(missingresolved$Absolute_Basophil_Count), missingresolved$BASO...23, missingresolved$Absolute_Basophil_Count)
+missingresolved = subset(missingresolved, select = -BASO...23)
 missingresolved$Absolute_Eosinophil_Count = ifelse(is.na(missingresolved$Absolute_Eosinophil_Count), missingresolved$EO...17, missingresolved$Absolute_Eosinophil_Count)
+missingresolved = subset(missingresolved, select = -EO...17)
 missingresolved$Absolute_Eosinophil_Count = ifelse(is.na(missingresolved$Absolute_Eosinophil_Count), missingresolved$EO...22, missingresolved$Absolute_Eosinophil_Count)
+missingresolved = subset(missingresolved, select = -EO...22)
 missingresolved$Absolute_Lymphocyte_Count = ifelse(is.na(missingresolved$Absolute_Lymphocyte_Count), missingresolved$LYMPH...20, missingresolved$Absolute_Lymphocyte_Count)
+missingresolved = subset(missingresolved, select = -LYMPH...20)
 missingresolved$Absolute_Lymphocyte_Count = ifelse(is.na(missingresolved$Absolute_Lymphocyte_Count), missingresolved$LYMPH...15, missingresolved$Absolute_Lymphocyte_Count)
+missingresolved = subset(missingresolved, select = -LYMPH...15)
 missingresolved$Absolute_Monocyte_Count = ifelse(is.na(missingresolved$Absolute_Monocyte_Count), missingresolved$MONO...16, missingresolved$Absolute_Monocyte_Count)
+missingresolved = subset(missingresolved, select = -MONO...16)
 missingresolved$Absolute_Monocyte_Count = ifelse(is.na(missingresolved$Absolute_Monocyte_Count), missingresolved$MONO...21, missingresolved$Absolute_Monocyte_Count)
+missingresolved = subset(missingresolved, select = -MONO...21)
 missingresolved$Absolute_Neutrophil_Count = ifelse(is.na(missingresolved$Absolute_Neutrophil_Count), missingresolved$NEUT...19, missingresolved$Absolute_Neutrophil_Count)
+missingresolved = subset(missingresolved, select = -NEUT...19)
 missingresolved$Absolute_Neutrophil_Count = ifelse(is.na(missingresolved$Absolute_Neutrophil_Count), missingresolved$NEUT...14, missingresolved$Absolute_Neutrophil_Count)
+missingresolved = subset(missingresolved, select = -NEUT...14)
 #missingresolved$Indirect_Bilirubin = ifelse(is.na(missingresolved$Indirect_Bilirubin), missingresolved$Bilirubin.Indirect, missingresolved$Indirect_Bilirubin)
 #missingresolved$CRP = ifelse(is.na(missingresolved$CRP), missingresolved$CRP_mg.L, missingresolved$CRP)
 missingresolved$LDL_HDL_Ratio = ifelse(is.na(missingresolved$LDL_HDL_Ratio), missingresolved$LDL.HDLRATIO, missingresolved$LDL_HDL_Ratio)
+missingresolved = subset(missingresolved, select = -LDL.HDLRATIO)
 #missingresolved$NLR_4 = ifelse(is.na(missingresolved$NLR_4), missingresolved$Neutrophils_Lymphocyte_Ratio, missingresolved$NLR_4)
 missingresolved$T3_Total = ifelse(is.na(missingresolved$T3_Total), missingresolved$T3, missingresolved$T3_Total)
+missingresolved = subset(missingresolved, select = -T3)
 missingresolved$T4_Total = ifelse(is.na(missingresolved$T4_Total), missingresolved$T4, missingresolved$T4_Total)
+missingresolved = subset(missingresolved, select = -T4)
 missingresolved$AST_SGOT = ifelse(is.na(missingresolved$AST_SGOT), missingresolved$SGOT_AST, missingresolved$AST_SGOT)
+missingresolved = subset(missingresolved, select = -SGOT_AST)
 missingresolved$ALT_SGPT = ifelse(is.na(missingresolved$ALT_SGPT), missingresolved$SGPT_ALT, missingresolved$ALT_SGPT)
+missingresolved = subset(missingresolved, select = -SGPT_ALT)
 missingresolved$Protein = ifelse(is.na(missingresolved$Protein), missingresolved$TotalProtein, missingresolved$Protein)
+missingresolved = subset(missingresolved, select = -TotalProtein)
 #missingresolved$Total_Calcium = ifelse(is.na(missingresolved$Total_Calcium), missingresolved$Calcium, missingresolved$Total_Calcium)
 missingresolved$RDW_Red_Cell_Distribution_Width = ifelse(is.na(missingresolved$RDW_Red_Cell_Distribution_Width), missingresolved$RDW_RedCellDistributionWidth, missingresolved$RDW_Red_Cell_Distribution_Width)
+missingresolved = subset(missingresolved, select = -RDW_RedCellDistributionWidth)
 missingresolved$RBC_Red_Blood_Cell_Count = ifelse(is.na(missingresolved$RBC_Red_Blood_Cell_Count), missingresolved$Erythrocyte_RBC_Count, missingresolved$RBC_Red_Blood_Cell_Count)
+missingresolved = subset(missingresolved, select = -Erythrocyte_RBC_Count)
 #missingresolved$Granulocyte_count = ifelse(is.na(missingresolved$Granulocyte_count), missingresolved$TOTAL_GRANULOCYTE_COUNT_cu_mm, missingresolved$Granulocyte_count)
 #missingresolved$Estimated_Average_Glucose = ifelse(is.na(missingresolved$Estimated_Average_Glucose), missingresolved$Estimated_average_glucose_eAG, missingresolved$Estimated_Average_Glucose)
 #missingresolved$Vitamin_D_25_Hydroxy = ifelse(is.na(missingresolved$Vitamin_D_25_Hydroxy), missingresolved$Vitamin_D, missingresolved$Vitamin_D_25_Hydroxy)
 missingresolved$LDL = ifelse(is.na(missingresolved$LDL), missingresolved$LDL_Direct, missingresolved$LDL)
+missingresolved = subset(missingresolved, select = -LDL_Direct)
 #missingresolved$Hematocrit = ifelse(is.na(missingresolved$Hematocrit), missingresolved$PCB, missingresolved$Hematocrit)
 missingresolved$Platelet_Count = ifelse(is.na(missingresolved$Platelet_Count), missingresolved$Platelet_Counts, missingresolved$Platelet_Count)
-
-
-
-#missingresolved$MPV_Mean_Platelet_Volume = ifelse(is.na(missingresolved$MPV_Mean_Platelet_Volume), 
-#missingresolved$MPV...97, missingresolved$MPV_Mean_Platelet_Volume)
-#missingresolved$Chloride = ifelse(is.na(missingresolved$Chloride),missingresolved$Cl._mEq.L, missingresolved$Chloride)
-#missingresolved$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(missingresolved$HbA1C_Glycosylated_Haemoglobin),
-#missingresolved$GLYCOSYLATED_HAEMOGLOBIN_., missingresolved$HbA1C_Glycosylated_Haemoglobin)
-#missingresolved$CRP = ifelse(is.na(missingresolved$CRP),missingresolved$Hs.CRP_High_Sensitivity_CRP, missingresolved$CRP)
-#missingresolved$name_dob_1.gps_offline = ifelse(is.na(missingresolved$CRP),missingresolved$Hs.CRP_High_Sensitivity_CRP, missingresolved$CRP)
-#missingresolved$name_dob_1.gps_offline = ifelse(is.na(missingresolved$CRP),missingresolved$Hs.CRP_High_Sensitivity_CRP, missingresolved$CRP)
-#missingresolved$VLDL = ifelse(is.na(missingresolved$VLDL),missingresolved$VLDL_CHOLESTEROL_._Calculated, missingresolved$VLDL)
-#missingresolved = subset(missingresolved, select = -IMPRESSION)#need to put this in from original copy before sending this out
-#missingresolved = subset(missingresolved, select = -Peripheral_Blood_Smear)#need to put this in from original copy before sending this out
-
-
-missingresolved$A_G_Ratio_Albumin_Globulin = ifelse(is.na(missingresolved$A_G_Ratio_Albumin_Globulin),
-                                                    missingresolved$A.GR, missingresolved$A_G_Ratio_Albumin_Globulin)
-missingresolved = subset(missingresolved, select = -A.GR)
-
-# missingresolved$RDW_Red_Cell_Distribution_Width = ifelse(is.na(missingresolved$RDW_Red_Cell_Distribution_Width),
-#                                             missingresolved$RDCV, missingresolved$RDW_Red_Cell_Distribution_Width)
-# missingresolved = subset(missingresolved, select = -RDCV)
-
-missingresolved$NonHDL_Cholesterol = ifelse(is.na(missingresolved$NonHDL_Cholesterol),
-                                            missingresolved$NHDL, missingresolved$NonHDL_Cholesterol)
-missingresolved = subset(missingresolved, select = -NHDL)
-
-# missingresolved$HbA1C_Glycosylated_Haemoglobin = ifelse(is.na(missingresolved$HbA1C_Glycosylated_Haemoglobin),
-#                                            missingresolved$HBA, missingresolved$HbA1C_Glycosylated_Haemoglobin)
-# missingresolved = subset(missingresolved, select = -HBA)
-
-missingresolved$BUN_Sr_creatinine = ifelse(is.na(missingresolved$BUN_Sr_creatinine),
-                                           missingresolved$B.CR, missingresolved$BUN_Sr_creatinine)
-missingresolved = subset(missingresolved, select = -B.CR)
-
-# missingresolved$T3_Total = ifelse(is.na(missingresolved$T3_Total),
-#                      missingresolved$T3, missingresolved$T3_Total)
-# missingresolved = subset(missingresolved, select = -T3)
-# 
-# missingresolved$T4_Total = ifelse(is.na(missingresolved$T4_Total),
-#                      missingresolved$T4, missingresolved$T4_Total)
-# missingresolved = subset(missingresolved, select = -T4)
-
-missingresolved$APB. = ifelse(is.na(missingresolved$APB.),
-                              missingresolved$APB..1, missingresolved$APB.)
-missingresolved = subset(missingresolved, select = -APB..1)
-
-missingresolved$Total_Calcium = ifelse(is.na(missingresolved$Total_Calcium),
-                                       missingresolved$CALC, missingresolved$Total_Calcium)
-missingresolved = subset(missingresolved, select = -CALC)
-#missingresolved = subset(missingresolved, select = -X)
-
-missingresolved$CRP = ifelse(is.na(missingresolved$CRP),
-                             missingresolved$CRP...35, missingresolved$CRP)
-missingresolved = subset(missingresolved, select = -CRP...35)
-
-# missingresolved$CRP = ifelse(is.na(missingresolved$CRP),
-#                 missingresolved$CRP...84, missingresolved$CRP)
-# missingresolved = subset(missingresolved, select = -CRP...84)
-
-# missingresolved$Lymphocytes = ifelse(is.na(missingresolved$Lymphocytes),
-#                         missingresolved$Lymphocytes...14, missingresolved$Lymphocytes)
-# missingresolved = subset(missingresolved, select = -Lymphocytes...14)
-
-# missingresolved$Monocytes = ifelse(is.na(missingresolved$Monocytes),
-#                       missingresolved$Monocytes...15, missingresolved$Monocytes)
-# missingresolved = subset(missingresolved, select = -Monocytes...15)
-# 
-# missingresolved$Neutrophils = ifelse(is.na(missingresolved$Neutrophils),
-#                         missingresolved$Neutrophils...16, missingresolved$Neutrophils)
-# missingresolved = subset(missingresolved, select = -Neutrophils...16)
-
-# missingresolved$NRBC = ifelse(is.na(missingresolved$NRBC),
-#                               missingresolved$NRBC..1, missingresolved$NRBC)
-# missingresolved = subset(missingresolved, select = -NRBC..1)
-
-missingresolved$CHOL_HDL_Ratio = ifelse(is.na(missingresolved$CHOL_HDL_Ratio),
-                                        missingresolved$TC.H, missingresolved$CHOL_HDL_Ratio)
-missingresolved = subset(missingresolved, select = -TC.H)
-
-# missingresolved$WBC_Total_White_Blood_Cell_Count = ifelse(is.na(missingresolved$WBC_Total_White_Blood_Cell_Count),
-#                                              missingresolved$WBC_Total_White_Blood_Cell_Count...23, missingresolved$WBC_Total_White_Blood_Cell_Count)
-# missingresolved = subset(missingresolved, select = -WBC_Total_White_Blood_Cell_Count...23)
-
-missingresolved$LDL_HDL_Ratio = ifelse(is.na(missingresolved$LDL_HDL_Ratio),
-                                       missingresolved$LDL., missingresolved$LDL_HDL_Ratio)
-missingresolved = subset(missingresolved, select = -LDL.)
-
-missingresolved$LDL_HDL_Ratio = ifelse(is.na(missingresolved$LDL_HDL_Ratio),
-                                       missingresolved$LDL..1, missingresolved$LDL_HDL_Ratio)
-missingresolved = subset(missingresolved, select = -LDL..1)
-
-#missingresolved = subset(missingresolved, select = -X.1)
-missingresolved = subset(missingresolved, select = -X.TSA)
-
-missingresolved = subset(missingresolved, select = -center.x)
-missingresolved = subset(missingresolved, select = -center.y)
-colnames(missingresolved)[colnames(missingresolved) == "NRBC."] ="NRBC_percent"
-colnames(missingresolved)[colnames(missingresolved) == "anthropometry.wasit_cir"] ="anthropometry.waist_cir"
+missingresolved = subset(missingresolved, select = -Platelet_Counts)
 
 missingresolved$FBS_Fasting_Blood_Glucose = ifelse(is.na(missingresolved$FBS_Fasting_Blood_Glucose),
                                                    missingresolved$FBS, missingresolved$FBS_Fasting_Blood_Glucose)
+missingresolved = subset(missingresolved, select = -FBS)
 
 missingresolved$Total_Bilirubin = ifelse(is.na(missingresolved$Total_Bilirubin),
                                          missingresolved$Bilirubin, missingresolved$Total_Bilirubin)
-
-
-
-missingresolved = subset(missingresolved, select = -Platelet_Counts)
-missingresolved = subset(missingresolved, select = -FBS)
 missingresolved = subset(missingresolved, select = -Bilirubin)
-#missingresolved = subset(missingresolved, select = -Homocysteine)
-#missingresolved = subset(missingresolved, select = -Insulin)
-#missingresolved = subset(missingresolved, select = -C_Peptide)
-#missingresolved = subset(missingresolved, select = -Platelet_Counts)
-missingresolved = subset(missingresolved, select = -Hb_Hemoglobin)
-missingresolved = subset(missingresolved, select = -TOTAL_LYMPHOCYTE_COUNT_1500.4000_cells.cu_mm)
-#missingresolved = subset(missingresolved, select = -Laungages_to_Speak)
-#missingresolved = subset(missingresolved, select = -...12)
-missingresolved = subset(missingresolved, select = -...66)
-missingresolved = subset(missingresolved, select = -A.GRatio)
-#missingresolved = subset(missingresolved, select = -TLC)
-#missingresolved = subset(missingresolved, select = -Others)
-missingresolved = subset(missingresolved, select = -A_G_Ratio)
-missingresolved = subset(missingresolved, select = -RDW)
-missingresolved = subset(missingresolved, select = -Immature_granulocyte)
-missingresolved = subset(missingresolved, select = -Chloride)
-missingresolved = subset(missingresolved, select = -MEAN_BLOOD_GLUCOSE_mg.dl)
-missingresolved = subset(missingresolved, select = -MCH)
-missingresolved = subset(missingresolved, select = -MCH_MeanCorpuscularHb)
-missingresolved = subset(missingresolved, select = -AbsoluteBasophilCount)
-missingresolved = subset(missingresolved, select = -AbsoluteEosinophilCount)
-missingresolved = subset(missingresolved, select = -AbsoluteNeutrophilsCount)
-missingresolved = subset(missingresolved, select = -AbsoluteMonocyteCount)
-missingresolved = subset(missingresolved, select = -AbsoluteLymphocyteCount)
-missingresolved = subset(missingresolved, select = -AlkalinePhosphatase)
-#missingresolved = subset(missingresolved, select = -Differential_Cell_Count)
-missingresolved = subset(missingresolved, select = -GammaGT_GGTP)
-#missingresolved = subset(missingresolved, select = -PCV_Automated_in_.)
-missingresolved = subset(missingresolved, select = -SGOT.SGPT)
-missingresolved = subset(missingresolved, select = -CHOL.HDLRATIO)
-missingresolved = subset(missingresolved, select = -ESR.ErythrocyteSedimentationRate.EDTA)
-missingresolved = subset(missingresolved, select = -EstimatedAverageGlucose_eAG)
-missingresolved = subset(missingresolved, select = -HbA1C.GlycatedHaemoglobin)
-missingresolved = subset(missingresolved, select = -HbA1c)
-#missingresolved = subset(missingresolved, select = -GLYCOSYLATED_Hb_IFCC)
-missingresolved = subset(missingresolved, select = -GLYCOSYLATED_HAEMOGLOBIN_in_.)
-#missingresolved = subset(missingresolved, select = -Haemoglobin_Hb)
-missingresolved = subset(missingresolved, select = -MCHC)
-missingresolved = subset(missingresolved, select = -MCHC_MeanCorpuscularHbConcn.)
-#missingresolved = subset(missingresolved, select = -NON.HDL_CHOLESTEROL)
-#missingresolved = subset(missingresolved, select = -Cl._mEq.L)
-#missingresolved = subset(missingresolved, select = -GLYCOSYLATED_HAEMOGLOBIN_.)
-#missingresolved = subset(missingresolved, select = -Hs.CRP_High_Sensitivity_CRP)
-missingresolved = subset(missingresolved, select = -PCV_Packed_Cell_Volume)
-missingresolved = subset(missingresolved, select = -Plateletcount)
-missingresolved = subset(missingresolved, select = -MCV_MeanCorpuscularVolume)
-missingresolved = subset(missingresolved, select = -MCV)
-missingresolved = subset(missingresolved, select = -LDLCholesterol)
-missingresolved = subset(missingresolved, select = -HDLCholesterol)
-missingresolved = subset(missingresolved, select = -VLDLCholesterol)
-#missingresolved = subset(missingresolved, select = -nonHDL)
-missingresolved = subset(missingresolved, select = -NonHDLCholesterol)
-missingresolved = subset(missingresolved, select = -Glucosefasting)
-#missingresolved = subset(missingresolved, select = -GLUCOSE._RANDOM_R_._PLASMA)
-missingresolved = subset(missingresolved, select = -UreaSerum)
-#missingresolved = subset(missingresolved, select = -MPV)
-missingresolved = subset(missingresolved, select = -MPV_MeanPlateletVolume)
-#missingresolved = subset(missingresolved, select = -Total_Leucocytes_Count_in_th.cumm)
-#missingresolved = subset(missingresolved, select = -TOTAL_WBC_COUNT_Automated_in_th.cumm)
-missingresolved = subset(missingresolved, select = -TotalLeucocytes_WBC_count)
-#missingresolved = subset(missingresolved, select = -PCV_.)
-#missingresolved = subset(missingresolved, select = -ABO_Type)
-#missingresolved = subset(missingresolved, select = -HCT)
-#missingresolved = subset(missingresolved, select = -TOTAL_LYMPHOCYTE_COUNT_cu_mm)
-missingresolved = subset(missingresolved, select = -PARASITE)
-missingresolved = subset(missingresolved, select = -BASO...18)
-missingresolved = subset(missingresolved, select = -BASO...23)
-missingresolved = subset(missingresolved, select = -SGOT_AST)
-missingresolved = subset(missingresolved, select = -SGPT_ALT)
-#missingresolved = subset(missingresolved, select = -...5)
-missingresolved = subset(missingresolved, select = -PCV_PackedCellVolume)
-missingresolved = subset(missingresolved, select = -IMPRESSION)
-missingresolved = subset(missingresolved, select = -TotalProtein)
-#missingresolved = subset(missingresolved, select = -Calcium)
-#missingresolved = subset(missingresolved, select = -Total)
-#missingresolved = subset(missingresolved, select = -TOTAL_LEUCOCYTE_COUNT_cu_mm)
-missingresolved = subset(missingresolved, select = -WBC_MORPHOLOGY)
-missingresolved = subset(missingresolved, select = -RDW_RedCellDistributionWidth)
-missingresolved = subset(missingresolved, select = -EO...17)
-missingresolved = subset(missingresolved, select = -EO...22)
-missingresolved = subset(missingresolved, select = -Erythrocyte_RBC_Count)
-#missingresolved = subset(missingresolved, select = -GPS)
-#missingresolved = subset(missingresolved, select = -TOTAL_GRANULOCYTE_COUNT_cu_mm)
-missingresolved = subset(missingresolved, select = -LYMPH...15)
-missingresolved = subset(missingresolved, select = -LYMPH...20)
-missingresolved = subset(missingresolved, select = -MONO...16)
-missingresolved = subset(missingresolved, select = -MONO...21)
-missingresolved = subset(missingresolved, select = -NEUT...14)
-missingresolved = subset(missingresolved, select = -NEUT...19)
-#missingresolved = subset(missingresolved, select = -ESR_Erythrocyte_Sedimentation_Rate)
-missingresolved = subset(missingresolved, select = -Bilirubin.Indirect)
-#missingresolved = subset(missingresolved, select = -CRP_mg.L)
-#missingresolved = subset(missingresolved, select = -Estimated_average_glucose_eAG)
-#missingresolved = subset(missingresolved, select = -GBP_GENERAL_BLOOD_PICTURE)
-missingresolved = subset(missingresolved, select = -LDL.HDLRATIO)
-missingresolved = subset(missingresolved, select = -Neutrophils_Lymphocyte_Ratio)
-#missingresolved = subset(missingresolved, select = -Vitamin_D)
-missingresolved = subset(missingresolved, select = -LDL_Direct)
-#missingresolved = subset(missingresolved, select = -PCB)
-missingresolved = subset(missingresolved, select = -T3)
-missingresolved = subset(missingresolved, select = -T4)
-missingresolved = subset(missingresolved, select = -NRBC_percent)
-missingresolved = subset(missingresolved, select = -NRBC..1)
-#missingresolved = subset(missingresolved, select = -VLDL_CHOLESTEROL_._Calculated)
 
-missingresolved = missingresolved[,!names(missingresolved) %in% c("Height", "Weight", "MalariaParasiteexaminationonthinSmear", "MalariaParasiteexaminationonthickSmear",
-                                                                  "No._of_Children", "Years_of_Education", "Occupation", "Medical_History", "Illness_Father",
-                                                                  "Illness_Mother", "Illness_Other", "Name_of_Medication", "Head_Cm", "Height_Cm", "Weight_Kg",
-                                                                  "Waist_Cm", "Hip_Cm", "DOB", "Barcode", "BP_Systolic", "BP_Diastolic","Languages_to_speak",
-                                                                  "Laungages_to_write")]
+missingresolved$Indirect_Bilirubin = ifelse(is.na(missingresolved$Indirect_Bilirubin),
+                                         missingresolved$Bilirubin.Indirect, missingresolved$Indirect_Bilirubin)
+missingresolved = subset(missingresolved, select = -Bilirubin.Indirect)
+
+
+missingresolved = subset(missingresolved, select = -X.TSA)
+
+#missingresolved = subset(missingresolved, select = -center.x)
+#missingresolved = subset(missingresolved, select = -center.y)
+colnames(missingresolved)[colnames(missingresolved) == "NRBC."] ="NRBC_percent"
+colnames(missingresolved)[colnames(missingresolved) == "anthropometry.wasit_cir"] ="anthropometry.waist_cir"
+names(missingresolved)[names(missingresolved) == "Vitamin_D"] <- "Vitamin_D_25_Hydroxy"
+names(missingresolved)[names(missingresolved) == "Homocysteine"] <- "Homocysteine_Levels"
+names(missingresolved)[names(missingresolved) == "Insulin"] <- "Fasting_Insulin_Level"
+names(missingresolved)[names(missingresolved) == "C_Peptide"] <- "C.Peptide"
+names(missingresolved)[names(missingresolved) == "Transferrin"] <- "Transferrin_Saturation"
+names(missingresolved)[names(missingresolved) == "Neutrophils_Lymphocyte_Ratio"] <- "NLR_4"
+
+
+
+missingresolved = subset(missingresolved, select = -...66)
+missingresolved = subset(missingresolved, select = -PARASITE)
+missingresolved = subset(missingresolved, select = -MalariaParasiteexaminationonthinSmear)
+missingresolved = subset(missingresolved, select = -MalariaParasiteexaminationonthickSmear)
 
 names(missingresolved)[names(missingresolved) == "Vitamin_D"] <- "Vitamin_D_25_Hydroxy"
 names(missingresolved)[names(missingresolved) == "Homocysteine"] <- "Homocysteine_Levels"
 names(missingresolved)[names(missingresolved) == "Insulin"] <- "Fasting_Insulin_Level"
 names(missingresolved)[names(missingresolved) == "C_Peptide"] <- "C.Peptide"
 
-
 missingresolved$WBC_Total_White_Blood_Cell_Count[missingresolved$LocalID %in% IGIB$LocalID] <- IGIB$WBC_Total_White_Blood_Cell_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
 missingresolved$Platelet_Count[missingresolved$LocalID %in% IGIB$LocalID] <- IGIB$Platelet_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
 missingresolved$Absolute_Monocyte_Count[missingresolved$LocalID %in% IGIB$LocalID] = IGIB$Absolute_Monocyte_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
-
-#merged_df$Absolute_Monocyte_Count[merged_df$LocalID %in% IGIB$LocalID] = IGIB$Absolute_Monocyte_Count[match(merged_df$LocalID[merged_df$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
-
-ILSB = read_excel("ILSB_CBC.xlsx", col_types = 'text')
-
-names(ILSB)[names(ILSB) == "Barcode"] <- "LocalID"
-names(ILSB)[names(ILSB) == "RBC"] <- "RBC_Red_Blood_Cell_Count"
-names(ILSB)[names(ILSB) == "TLC"] <- "WBC_Total_White_Blood_Cell_Count"
-names(ILSB)[names(ILSB) == "PLT"] <- "Platelet_Count"
-names(ILSB)[names(ILSB) == "PCV"] <- "Hematocrit"
-names(ILSB)[names(ILSB) == "HGB"] <- "HB_Haemoglobin"
-names(ILSB)[names(ILSB) == "MCV"] <- "MCV_Mean_Corpuscular_Volume"
-names(ILSB)[names(ILSB) == "MCHC"] <- "MCHC_Mean_Corpuscular_Hb_Concn"
-names(ILSB)[names(ILSB) == "MCH"] <- "MCH_Mean_Corpuscular_Hb"
-names(ILSB)[names(ILSB) == "RDW"] <- "RDW_Red_Cell_Distribution_Width"
-names(ILSB)[names(ILSB) == "MPV"] <- "MPV_Mean_Platelet_Volume"
-names(ILSB)[names(ILSB) == "NEUT"] <- "Absolute_Neutrophil_Count"
-names(ILSB)[names(ILSB) == "LYMPH"] <- "Absolute_Lymphocyte_Count"
-names(ILSB)[names(ILSB) == "MONO"] <- "Absolute_Monocyte_Count"
-names(ILSB)[names(ILSB) == "EO"] <- "Absolute_Eosinophil_Count"
-names(ILSB)[names(ILSB) == "BASO"] <- "Absolute_Basophil_Count"
-names(ILSB)[names(ILSB) == "NEUT_per"] <- "Neutrophils"
-names(ILSB)[names(ILSB) == "LYMPH_per"] <- "Lymphocytes"
-names(ILSB)[names(ILSB) == "MONO_per"] <- "Monocytes"
-names(ILSB)[names(ILSB) == "EO_per"] <- "Eosinophils"
-names(ILSB)[names(ILSB) == "BASO_per"] <- "Basophils"
-
 
 missingresolved$Absolute_Basophil_Count[missingresolved$LocalID %in% ILSB$LocalID] <- ILSB$Absolute_Basophil_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 missingresolved$Absolute_Neutrophil_Count[missingresolved$LocalID %in% ILSB$LocalID] <- ILSB$Absolute_Neutrophil_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
@@ -3122,47 +2312,37 @@ missingresolved$Lymphocytes[missingresolved$LocalID %in% ILSB$LocalID] <- ILSB$L
 
 missingresolved$Platelet_Count[missingresolved$LocalID %in% ILSB$LocalID] <- ILSB$Platelet_Count[match(missingresolved$LocalID[missingresolved$LocalID %in% ILSB$LocalID], ILSB$LocalID)]
 
-names(missingresolved)[names(missingresolved) == "Transferrin"] = "Transferrin_Saturation"
 # Age resolution ----------------------------------------------------------
 
-missingresolved$calc_age = missingresolved$name_dob_1.approx_age
-missingresolved$calc_age = ifelse(is.na(missingresolved$calc_age), missingresolved$name_dob_1.age_on_interview,
-                              missingresolved$calc_age)
+missingresolved$age = missingresolved$name_dob_1.approx_age
+missingresolved$age = ifelse(is.na(missingresolved$age), missingresolved$name_dob_1.age_on_interview,
+                                  missingresolved$age)
+missingresolved <- missingresolved %>% 
+  mutate(age = ifelse(is.na(age) & name_dob_1.year_of_birth < 100, name_dob_1.year_of_birth, age))
+missingresolved$age[missingresolved$age<18] = NA
+missingresolved$age_withBBC = missingresolved$age #no missing
 
-missingresolved$calc1 = missingresolved$calc_age
-missingresolved$calc_age = ifelse(is.na(missingresolved$calc1), missingresolved$Age,
-                                  missingresolved$calc1)
+
+# date resolution ---------------------------------------------------------
+
+missingresolved$name_dob_1.dob = gsub('/', '-', missingresolved$name_dob_1.dob)
+missingresolved$name_dob_1.dob = as.Date(parse_date(missingresolved$name_dob_1.dob))
+missingresolved$introduction_1.examination_date = as.Date(parse_date(missingresolved$introduction_1.examination_date))
 
 # New columns for rbind ---------------------------------------------------
 
-missingresolved <- missingresolved[, !colnames(missingresolved) %in% setdiff(colnames(missingresolved), colnames(ft))]
 
+missingresolved <- missingresolved[, !colnames(missingresolved) %in% setdiff(colnames(missingresolved), colnames(ft))]
 new_cols = c(setdiff(colnames(ft), colnames(missingresolved)))
 library(dplyr)
 missingresolved = missingresolved %>% 
   mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
 missingresolved<-missingresolved[names(ft)]
-names(missingresolved)[names(missingresolved) == "Immature_granulocytes.1"] = "Immature_granulocytes"
-
+#names(missingresolved)[names(missingresolved) == "Immature_granulocytes.1"] = "Immature_granulocytes"
+missingresolved$name_dob_1.dob = as.character(missingresolved$name_dob_1.dob)
+missingresolved$introduction_1.examination_date = as.character(missingresolved$introduction_1.examination_date)
 ft = rbind(ft, missingresolved)
-
-ft$Immature_granulocytes = ifelse(is.na(ft$Immature_granulocytes), ft$Immature_granulocytes.1,
-                                  ft$Immature_granulocytes)
-
-ft = subset(ft, select = -Immature_granulocytes.1)
-
-
-# Age resolution on full dataset ------------------------------------------
-
-ft$Age = gsub(" Y", "", ft$Age)
-ft$Age = gsub(" /F", "", ft$Age)
-ft$Age = gsub(" /M", "", ft$Age)
-ft$Age = gsub("/F", "", ft$Age)
-ft$Age = gsub("/M", "", ft$Age)
-ft$Age = trimws(ft$Age)
-
-ft$calc1 = ifelse(is.na(ft$calc1), ft$Age, ft$calc1)
 
 # RGCB missing HbA1c ------------------------------------------------------
 RGCB_new = read_xlsx("RGCB-L-025001 to 154.xlsx")
@@ -3170,6 +2350,7 @@ RGCB_new$LocalID = paste0("RGCB/L/0", RGCB_new$`Barcode Number`)
 names(RGCB_new)[names(RGCB_new) == "HbA1c \r\n( %)\r\n4.0 - 6.5"] = "HbA1C_Glycosylated_Haemoglobin"
 ft$HbA1C_Glycosylated_Haemoglobin[ft$LocalID %in% RGCB_new$LocalID] = 
   RGCB_new$HbA1C_Glycosylated_Haemoglobin[match(ft$LocalID[ft$LocalID %in% RGCB_new$LocalID], RGCB_new$LocalID)]
+
 # New data CCMB -----------------------------------------------------------
 
 CCMB_BBC = read_xlsx("BBC DATA_CCMB.xlsx")
@@ -3233,11 +2414,19 @@ names(CCMB_ODK)[names(CCMB_ODK)=="BLOOD DRAW UNDER FASTING OR NOT"] = "blood_dra
 CCMB_joined <- merge(CCMB_BBC, CCMB_ODK, by.x = "LocalID", 
                      by.y = "LocalID", all.x = TRUE, all.y = TRUE)
 
-CCMB_joined$calc_age = CCMB_joined$name_dob_1.approx_age
-CCMB_joined$calc1 = CCMB_joined$calc_age
+CCMB_joined$age = CCMB_joined$name_dob_1.approx_age
+CCMB_joined$age_withBBC = CCMB_joined$age
+
+CCMB_joined$introduction_1.examination_date = as.Date(CCMB_joined$introduction_1.examination_date)
+CCMB_joined$name_dob_1.dob = gsub("/","-",CCMB_joined$name_dob_1.dob)
+CCMB_joined$name_dob_1.dob[CCMB_joined$name_dob_1.dob=="15-4-1958"] = "1958-04-15"
+CCMB_joined$name_dob_1.dob[CCMB_joined$name_dob_1.dob=="27-1-1990"] = "1990-01-27"
+CCMB_joined$name_dob_1.dob[CCMB_joined$name_dob_1.dob=="26333"] = "1972-01-03"
+
+CCMB_joined$name_dob_1.dob = as.Date(parse_date(CCMB_joined$name_dob_1.dob))
 
 CCMB_joined$name_dob_1.ethnicity[CCMB_joined$name_dob_1.ethnicity=="THARU"] = "tharu"
-CCMB_joined$name_dob_1.ethnicity[CCMB_joined$name_dob_1.ethnicity=="VAIDIKI BRAHMIN"] = "vaidiki brahmin"
+CCMB_joined$name_dob_1.ethnicity[CCMB_joined$name_dob_1.ethnicity=="VAIDIKI BRAHMIN"] = "vaidiki_brahmin"
 
 CCMB_joined$name_dob_1.state[CCMB_joined$name_dob_1.state=="TELANGANA"] = "telangana"
 CCMB_joined$name_dob_1.state[CCMB_joined$name_dob_1.state=="UTTAR PRADESH"] = "uttar_pradesh"
@@ -3253,12 +2442,9 @@ CCMB_joined = CCMB_joined %>%
   mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
 CCMB_joined<-CCMB_joined[names(ft)]
-names(CCMB_joined)[names(CCMB_joined) == "Immature_granulocytes.1"] = "Immature_granulocytes"
-
+CCMB_joined$introduction_1.examination_date = as.character(CCMB_joined$introduction_1.examination_date)
+CCMB_joined$name_dob_1.dob = as.character(CCMB_joined$name_dob_1.dob)
 ft = rbind(ft, CCMB_joined)
-
-write.table(ft, "merged_allsamples_May30.txt", sep = '\t', row.names = F)
-
 
 # Convert to numeric again ------------------------------------------------
 
@@ -3334,7 +2520,7 @@ ft$Vitamin_D_25_Hydroxy = as.numeric(ft$Vitamin_D_25_Hydroxy)
 ft$Free_T3 = as.numeric(ft$Free_T3)
 ft$Free_T4 = as.numeric(ft$Free_T4)
 ft$Hs.CRP_High_Sensitivity_CRP = as.numeric(ft$Hs.CRP_High_Sensitivity_CRP)
-ft$Transferrin = as.numeric(ft$Transferrin)
+#$Transferrin = as.numeric(ft$Transferrin)
 ft$Polymorphs = as.numeric(ft$Polymorphs)
 ft$Sodium = as.numeric(ft$Sodium)
 ft$Potassium = as.numeric(ft$Potassium)
@@ -3367,10 +2553,6 @@ ft$Granulocytes = as.numeric(ft$Granulocytes)
 ft$Granulocyte_count = as.numeric(ft$Granulocyte_count)
 ft$MID = as.numeric(ft$MID)
 ft$MID_Percent = as.numeric(ft$MID_Percent)
-ft$calc_age = as.numeric(ft$calc_age)
-ft$calc1 = gsub(" /F", "", ft$calc1)
-ft$calc1 = gsub(" /M", "", ft$calc1)
-ft$calc1 = as.numeric(ft$calc1)
 
 
 # Hatta correction --------------------------------------------------------
@@ -3386,15 +2568,7 @@ ft$Transferrin_Saturation[ft$LocalID %in% hatta_corrected$LocalID] <- hatta_corr
 ft$T3_Total[ft$LocalID %in% hatta_corrected$LocalID] <- hatta_corrected$T3_Total[match(ft$LocalID[ft$LocalID %in% hatta_corrected$LocalID], hatta_corrected$LocalID)]
 ft$T4_Total[ft$LocalID %in% hatta_corrected$LocalID] <- hatta_corrected$T4_Total[match(ft$LocalID[ft$LocalID %in% hatta_corrected$LocalID], hatta_corrected$LocalID)]
 ft$TSH[ft$LocalID %in% hatta_corrected$LocalID] <- hatta_corrected$TSH[match(ft$LocalID[ft$LocalID %in% hatta_corrected$LocalID], hatta_corrected$LocalID)]
-ft$Iron[ft$LocalID %in% hatta_corrected$LocalID] = NA
 
-ft = subset(ft, select = -Iron)
-
-ft$Transferrin_Saturation = ifelse(is.na(ft$Transferrin_Saturation), ft$Transferrin,
-                                  ft$Transferrin_Saturation)
-ft$Transferrin_Saturation = as.numeric(ft$Transferrin_Saturation)
-
-ft = subset(ft, select = -Transferrin)
 
 
 # Value replacement - IGIB -------------------------------------------------------
@@ -3410,6 +2584,15 @@ ft$LDL_HDL_Ratio[ft$LocalID %in% IGIB_lipid_corrected$LocalID] <- IGIB_lipid_cor
 
 IGIB_hipcirc_corrected = read.table("IGIB_abnormal_hipcirc_values_corrected.txt", sep = '\t', header = T)
 ft$anthropometry.hip_cir[ft$LocalID %in% IGIB_hipcirc_corrected$LocalID] <- IGIB_hipcirc_corrected$anthropometry.hip_cir[match(ft$LocalID[ft$LocalID %in% IGIB_hipcirc_corrected$LocalID], IGIB_hipcirc_corrected$LocalID)]
+
+IGIB_headcirc = read_xlsx("igib_headcirc_corrected.xlsx")
+ft$anthropometry.head_cir[ft$LocalID %in% IGIB_headcirc$LocalID] <- IGIB_headcirc$anthropometry.head_cir[match(ft$LocalID[ft$LocalID %in% IGIB_headcirc$LocalID], IGIB_headcirc$LocalID)]
+
+IGIB_TSH = read_xlsx("IGIB_TSH.xlsx")
+ft$TSH[ft$LocalID %in% IGIB_TSH$LocalID] <- IGIB_TSH$TSH[match(ft$LocalID[ft$LocalID %in% IGIB_TSH$LocalID], IGIB_TSH$LocalID)]
+
+IGIB_Chloride = read_xlsx("IGIB_chloride.xlsx")
+ft$Cl._mEq.L[ft$LocalID %in% IGIB_Chloride$LocalID] <- IGIB_Chloride$Chloride[match(ft$LocalID[ft$LocalID %in% IGIB_Chloride$LocalID], IGIB_Chloride$LocalID)]
 
 # Value replacement - AIIM ------------------------------------------------
 
@@ -3432,9 +2615,6 @@ ft$Indirect_Bilirubin[ft$LocalID %in% AIIM_bili$LocalID] <- AIIM_bili$Indirect_B
 # NIBG_found data ---------------------------------------------------------
 NIBG_found = read_xlsx("missing_ODK_data_found_list_nibmg.xlsx")
 NIBG_found_BBC = read_xlsx("NIBMG_biochemistry_july2023_N1330.xlsx")
-
-emptycolumns = colSums(is.na(NIBG_found_BBC)|NIBG_found_BBC=="")==nrow(NIBG_found_BBC)
-NIBG_found_BBC = NIBG_found_BBC[ ,!emptycolumns]
 
 emptycolumns = colSums(is.na(NIBG_found)|NIBG_found=="")==nrow(NIBG_found)
 NIBG_found = NIBG_found[ ,!emptycolumns]
@@ -3475,12 +2655,15 @@ names(NIBG_found_BBC)[names(NIBG_found_BBC) == "CREATININE (mg/dL)"] <- "Creatin
 
 names(NIBG_found)[names(NIBG_found) == "Barcode present in ODK"] <- "LocalID"
 NIBG_found  = subset(NIBG_found, select = -KEY)
-
 colnames(NIBG_found) <- gsub(x = colnames(NIBG_found), pattern = "\\-", replacement = ":")  
 colnames(NIBG_found) <- gsub(x = colnames(NIBG_found), pattern = "\\:", replacement = ".")  
 
+colnames(NIBG_found)[colnames(NIBG_found)=="anthropometry.wasit_cir"] = "anthropometry.waist_cir"
+colnames(NIBG_found)[colnames(NIBG_found)=="LocalID"] = "localid"
+colnames(NIBG_found)[colnames(NIBG_found)=="introduction_1.local_id_manual...2"] = "introduction_1.local_id_manual"
+NIBG_found = subset(NIBG_found, select = -introduction_1.local_id_manual...14)
 
-odk_main = read.table("GenomeIndia_Socio_demographics_V1_results(1).csv", header = T, sep = ",", fill = T, encoding = 'UTF-8')
+NIBG_found$center = "NIBG"
 
 
 if (all(colnames(odk_main) == colnames(NIBG_found))) {
@@ -3491,18 +2674,16 @@ if (all(colnames(odk_main) == colnames(NIBG_found))) {
 
 
 NIBG_found_joined <- merge(NIBG_found_BBC, NIBG_found, by.x = "LocalID", 
-                             by.y = "LocalID", all.x = F, all.y = TRUE)
+                           by.y = "localid", all.x = F, all.y = F)
 
 
-NIBG_found_joined$center = "NIBG"
 NIBG_found_joined$region = "East"
-names(NIBG_found_joined)[names(NIBG_found_joined) == "anthropometry.wasit_cir"] <- "anthropometry.waist_cir"
 NIBG_found_joined$name_dob_1.ethnicity = tolower(NIBG_found_joined$name_dob_1.ethnicity)
 
-NIBG_found_joined$name_dob_1.ethnicity[NIBG_found_joined$name_dob_1.ethnicity=="kudmi mahato"] = "kurmi mahato"
-NIBG_found_joined$name_dob_1.ethnicity[NIBG_found_joined$name_dob_1.ethnicity=="sardar"] = "namasudra"
+NIBG_found_joined$name_dob_1.ethnicity[NIBG_found_joined$name_dob_1.ethnicity=="kudmi mahato"] = "kudmi_mahato"
+NIBG_found_joined$name_dob_1.ethnicity[NIBG_found_joined$name_dob_1.ethnicity=="rajbanshi"] = "rajbangshi"
 NIBG_found_joined$name_dob_1.ethnicity[NIBG_found_joined$name_dob_1.ethnicity=="rajput"] = "namasudra"
-NIBG_found_joined$name_dob_1.ethnicity[NIBG_found_joined$name_dob_1.ethnicity=="male"] = "kurmi mahato"
+#NIBG_found_joined$name_dob_1.ethnicity[NIBG_found_joined$name_dob_1.ethnicity=="male"] = "kurmi mahato"
 
 NIBG_found_joined = NIBG_found_joined[,!names(NIBG_found_joined) %in% (setdiff(colnames(NIBG_found_joined), colnames(ft)))]
 
@@ -3513,16 +2694,37 @@ NIBG_found_joined = NIBG_found_joined %>%
 
 NIBG_found_joined = NIBG_found_joined[names(ft)]
 
-NIBG_found_joined$calc_age = NIBG_found_joined$name_dob_1.approx_age
-NIBG_found_joined$calc_age = as.numeric(NIBG_found_joined$calc_age)
-NIBG_found_joined$calc_age = ifelse(is.na(NIBG_found_joined$calc_age), NIBG_found_joined$name_dob_1.age_on_interview,
-                                      NIBG_found_joined$calc_age)
-NIBG_found_joined$calc_age = as.numeric(NIBG_found_joined$calc_age)
+NIBG_found_joined$name_dob_1.dob <- sapply(NIBG_found_joined$name_dob_1.dob, function(date) {
+  if (grepl("^[A-Za-z]{3} \\d{1,2}, \\d{4}$", date)) {  # Check if string has 5 characters and all characters are numeric
+    parsed_date <- mdy(date)
+    return(format(parsed_date, "%Y-%m-%d"))
+  } else {
+    return(date)
+  }
+})
 
-NIBG_found_joined$calc1 = NIBG_found_joined$calc_age
-NIBG_found_joined$calc1 = ifelse(is.na(NIBG_found_joined$calc1), NIBG_found_joined$Age,
-                                   NIBG_found_joined$calc1)
+NIBG_found_joined$introduction_1.examination_date <- sapply(NIBG_found_joined$introduction_1.examination_date, function(date) {
+  if (grepl("^[A-Za-z]{3} \\d{1,2}, \\d{4}$", date)) {  # Check if string has 5 characters and all characters are numeric
+    parsed_date <- mdy(date)
+    return(format(parsed_date, "%Y-%m-%d"))
+  } else {
+    return(date)
+  }
+})
 
+
+NIBG_found_joined$age = NIBG_found_joined$name_dob_1.approx_age
+NIBG_found_joined$age = as.numeric(NIBG_found_joined$age)
+NIBG_found_joined$age = ifelse(is.na(NIBG_found_joined$age), NIBG_found_joined$name_dob_1.age_on_interview,
+                                    NIBG_found_joined$age)
+NIBG_found_joined$age = as.numeric(NIBG_found_joined$age)
+
+NIBG_found_joined$age_withBBC = NIBG_found_joined$age
+NIBG_found_joined$age_withBBC = ifelse(is.na(NIBG_found_joined$age_withBBC), NIBG_found_joined$Age,
+                                 NIBG_found_joined$age_withBBC)
+
+NIBG_found_joined$name_dob_1.dob = as.character(NIBG_found_joined$name_dob_1.dob)
+NIBG_found_joined$introduction_1.examination_date = as.character(NIBG_found_joined$introduction_1.examination_date)
 ft = rbind(ft, NIBG_found_joined)
 
 # NIBG_missing data -------------------------------------------------------
@@ -3594,10 +2796,15 @@ NIBG_missing_ODK  = subset(NIBG_missing_ODK, select = -SubmissionDate)
 NIBG_missing_ODK  = subset(NIBG_missing_ODK, select = -KEY)
 
 colnames(NIBG_missing_ODK) <- gsub(x = colnames(NIBG_missing_ODK), pattern = "\\-", replacement = ":")  
-colnames(NIBG_missing_ODK) <- gsub(x = colnames(NIBG_missing_ODK), pattern = "\\:", replacement = ".")  
+colnames(NIBG_missing_ODK) <- gsub(x = colnames(NIBG_missing_ODK), pattern = "\\:", replacement = ".")
 
+NIBG_missing_ODK$localid = NIBG_missing_ODK$LocalID
+colnames(NIBG_missing_ODK)[colnames(NIBG_missing_ODK)=="anthropometry.wasit_cir"] = "anthropometry.waist_cir"
+NIBG_missing_ODK$center = gsub("\\/.*","", NIBG_missing_ODK$localid)
 
-odk_main = read.table("GenomeIndia_Socio_demographics_V1_results(1).csv", header = T, sep = ",", fill = T, encoding = 'UTF-8')
+NIBG_missing_ODK = subset(NIBG_missing_ODK, select = -LocalID)
+
+#odk_main = read.table("GenomeIndia_Socio_demographics_V1_results(1).csv", header = T, sep = ",", fill = T, encoding = 'UTF-8')
 
 
 if (all(colnames(odk_main) == colnames(NIBG_missing_ODK))) {
@@ -3608,18 +2815,30 @@ if (all(colnames(odk_main) == colnames(NIBG_missing_ODK))) {
 
 
 NIBG_missing_joined <- merge(NIBG_missing_BBC, NIBG_missing_ODK, by.x = "LocalID", 
-                     by.y = "LocalID", all.x = F, all.y = TRUE)
+                             by.y = "localid", all.x = F, all.y = F)
+
+NIBG_missing_joined_other <- merge(NIBG_missing_BBC, odk_main, by.x = "LocalID", 
+                             by.y = "localid", all.x = F, all.y = F)
 
 
-NIBG_missing_joined$center = gsub("\\/.*","", NIBG_missing_joined$LocalID)
 NIBG_missing_joined$region = "East"
-names(NIBG_missing_joined)[names(NIBG_missing_joined) == "anthropometry.wasit_cir"] <- "anthropometry.waist_cir"
+NIBG_missing_joined_other$region[NIBG_missing_joined_other$name_dob_1.state=="jharkhand"] = "East"
+NIBG_missing_joined_other$region[NIBG_missing_joined_other$name_dob_1.state=="orissa"] = "East"
+NIBG_missing_joined_other$region[NIBG_missing_joined_other$name_dob_1.state=="assam"] = "North-East"
+
 NIBG_missing_joined$name_dob_1.ethnicity = tolower(NIBG_missing_joined$name_dob_1.ethnicity)
 
-NIBG_missing_joined$name_dob_1.ethnicity[NIBG_missing_joined$name_dob_1.ethnicity=="kudmi mahato"] = "kurmi mahato"
-NIBG_missing_joined$name_dob_1.ethnicity[NIBG_missing_joined$name_dob_1.ethnicity=="sardar"] = "namasudra"
+NIBG_missing_joined$name_dob_1.ethnicity[NIBG_missing_joined$name_dob_1.ethnicity=="rahri brahmin"] = "rahri_brahmin"
+
+NIBG_missing_joined_other$name_dob_1.ethnicity = tolower(NIBG_missing_joined_other$name_dob_1.ethnicity)
+NIBG_missing_joined_other$name_dob_1.ethnicity[NIBG_missing_joined_other$name_dob_1.ethnicity=="chik baraik"] = "chik_baraik"
+NIBG_missing_joined_other$name_dob_1.ethnicity[NIBG_missing_joined_other$name_dob_1.ethnicity=="maithili brahmin"] = "maithili_brahmin"
+NIBG_missing_joined_other$name_dob_1.ethnicity[NIBG_missing_joined_other$name_dob_1.ethnicity=="oriya brahmin"] = "oriya_brahmin"
+NIBG_missing_joined_other$name_dob_1.ethnicity[NIBG_missing_joined_other$name_dob_1.ethnicity=="st/hajong"] = "hajong"
+NIBG_missing_joined_other$name_dob_1.ethnicity[NIBG_missing_joined_other$name_dob_1.ethnicity=="st/rabha/patirabha"] = "rabha"
 
 NIBG_missing_joined = NIBG_missing_joined[,!names(NIBG_missing_joined) %in% (setdiff(colnames(NIBG_missing_joined), colnames(ft)))]
+NIBG_missing_joined_other = NIBG_missing_joined_other[,!names(NIBG_missing_joined_other) %in% (setdiff(colnames(NIBG_missing_joined_other), colnames(ft)))]
 
 new_cols = c(setdiff(colnames(ft), colnames(NIBG_missing_joined)))
 library(dplyr)
@@ -3628,79 +2847,110 @@ NIBG_missing_joined = NIBG_missing_joined %>%
 
 NIBG_missing_joined = NIBG_missing_joined[names(ft)]
 
-NIBG_missing_joined$calc_age = NIBG_missing_joined$name_dob_1.approx_age
-NIBG_missing_joined$calc_age = as.numeric(NIBG_missing_joined$calc_age)
-NIBG_missing_joined$calc_age = ifelse(is.na(NIBG_missing_joined$calc_age), NIBG_missing_joined$name_dob_1.age_on_interview,
-                                      NIBG_missing_joined$calc_age)
-NIBG_missing_joined$calc_age = as.numeric(NIBG_missing_joined$calc_age)
+new_cols = c(setdiff(colnames(ft), colnames(NIBG_missing_joined_other)))
+library(dplyr)
+NIBG_missing_joined_other = NIBG_missing_joined_other %>% 
+  mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
-NIBG_missing_joined$calc1 = NIBG_missing_joined$calc_age
-NIBG_missing_joined$calc1 = ifelse(is.na(NIBG_missing_joined$calc1), NIBG_missing_joined$Age,
-                                      NIBG_missing_joined$calc1)
+NIBG_missing_joined_other = NIBG_missing_joined_other[names(ft)]
+
+
+NIBG_missing_joined$age = NIBG_missing_joined$name_dob_1.approx_age
+NIBG_missing_joined_other$age = NIBG_missing_joined_other$name_dob_1.approx_age
+
+NIBG_missing_joined$age = as.numeric(NIBG_missing_joined$age)
+NIBG_missing_joined$age = ifelse(is.na(NIBG_missing_joined$age), NIBG_missing_joined$name_dob_1.age_on_interview,
+                                      NIBG_missing_joined$age)
+NIBG_missing_joined$age = as.numeric(NIBG_missing_joined$age)
+
+NIBG_missing_joined$age_withBBC = NIBG_missing_joined$age
+NIBG_missing_joined$age_withBBC = ifelse(is.na(NIBG_missing_joined$age_withBBC), NIBG_missing_joined$Age,
+                                   NIBG_missing_joined$age_withBBC)
+
+NIBG_missing_joined$introduction_1.examination_date = gsub("/", "-",NIBG_missing_joined$introduction_1.examination_date)
+
+NIBG_missing_joined$introduction_1.examination_date = format(dmy(NIBG_missing_joined$introduction_1.examination_date), "%Y-%m-%d")
+NIBG_missing_joined$introduction_1.examination_date = as.character(NIBG_missing_joined$introduction_1.examination_date)
 
 ft = rbind(ft, NIBG_missing_joined)
 
+NIBG_missing_joined_other$introduction_1.examination_date = as.Date(NIBG_missing_joined_other$introduction_1.examination_date, format = "%Y-%m-%d")
+NIBG_missing_joined_other$introduction_1.examination_date = as.character(NIBG_missing_joined_other$introduction_1.examination_date)
 
-# IBSD missing ------------------------------------------------------------
+NIBG_missing_joined_other$name_dob_1.dob = as.Date(NIBG_missing_joined_other$name_dob_1.dob, format = "%Y-%m-%d")
+NIBG_missing_joined_other$name_dob_1.dob = as.character(NIBG_missing_joined_other$name_dob_1.dob)
 
-IBSD_missing = read_xlsx("IBSD_missingsamples.xlsx")
-IBSD_missing  = subset(IBSD_missing, select = -SeqID)
-IBSD_missing  = subset(IBSD_missing, select = -ethnicity)
-IBSD_missing  = subset(IBSD_missing, select = -gender)
-IBSD_missing  = subset(IBSD_missing, select = -`...8`)
-IBSD_missing  = subset(IBSD_missing, select = -BioCHEMISTRY)
-IBSD_missing  = subset(IBSD_missing, select = -`Sample barcode`)
-IBSD_missing  = subset(IBSD_missing, select = -`Sample ID`)
-IBSD_missing  = subset(IBSD_missing, select = -`Collection Center`)
-IBSD_missing  = subset(IBSD_missing, select = -Factors)
-IBSD_missing  = subset(IBSD_missing, select = -Sex)
+NIBG_missing_joined_other$age = ifelse(is.na(NIBG_missing_joined_other$age), NIBG_missing_joined_other$name_dob_1.age_on_interview,
+                                 NIBG_missing_joined_other$age)
+NIBG_missing_joined$age = as.numeric(NIBG_missing_joined$age)
 
-names(IBSD_missing)[names(IBSD_missing) == "AGE (Years)"] <- "Age"
-names(IBSD_missing)[names(IBSD_missing) == "HEMOGLOBIN (g/dL)"] <- "HB_Haemoglobin"
-names(IBSD_missing)[names(IBSD_missing) == "RBC_Count (million/?L)"] <- "RBC_Red_Blood_Cell_Count"
-names(IBSD_missing)[names(IBSD_missing) == "WBC_Count (thousands/?L)"] <- "WBC_Total_White_Blood_Cell_Count"
-names(IBSD_missing)[names(IBSD_missing) == "PLATELET_Count (Lakhs/?L)"] <- "Platelet_Count"
-names(IBSD_missing)[names(IBSD_missing) == "NEUTROPHILS (%)"] <- "Neutrophils"
-names(IBSD_missing)[names(IBSD_missing) == "ABSOLUTE_NEUTROPHIL_COUNT (thousands/?L)"] <- "Absolute_Neutrophil_Count"
-names(IBSD_missing)[names(IBSD_missing) == "EOSINOPHILS (%)"] <- "Eosinophils"
-names(IBSD_missing)[names(IBSD_missing) == "ABSOLUTE_EOSINOPHIL_COUNT (thousands/?L)"] <- "Absolute_Eosinophil_Count"
-names(IBSD_missing)[names(IBSD_missing) == "LYMPHOCYTES (%)"] <- "Lymphocytes"
-names(IBSD_missing)[names(IBSD_missing) == "ABSOLUTE_LYMPHOCYTE_COUNT (thousands/?L)"] <- "Absolute_Lymphocyte_Count"
-names(IBSD_missing)[names(IBSD_missing) == "MONOCYTES (%)"] <- "Monocytes"
-names(IBSD_missing)[names(IBSD_missing) == "ABSOLUTE_MONOCYTE_COUNT (thousand/?L)"] <- "Absolute_Monocyte_Count"
-names(IBSD_missing)[names(IBSD_missing) == "BASOPHILS (%)"] <- "Basophils"
-names(IBSD_missing)[names(IBSD_missing) == "ABSOLUTE_BASOPHIL_COUNT (thousand/?L)"] <- "Absolute_Basophil_Count"
-names(IBSD_missing)[names(IBSD_missing) == "SGOT (U/L)"] <- "AST_SGOT"
-names(IBSD_missing)[names(IBSD_missing) == "SGPT (U/L)"] <- "ALT_SGPT"
-names(IBSD_missing)[names(IBSD_missing) == "ALKALINE_PHOSPHATASE (U/L)"] <- "Alkaline_Phosphatase"
-names(IBSD_missing)[names(IBSD_missing) == "GLUCOSE_FASTING_PLASMA (mg/dL)"] <- "FBS_Fasting_Blood_Glucose"
-names(IBSD_missing)[names(IBSD_missing) == "CHOLESTEROL (mg/dL)"] <- "Cholesterol"
-names(IBSD_missing)[names(IBSD_missing) == "TRIGLYCERIDES (mg/dL)"] <- "Triglycerides"
-names(IBSD_missing)[names(IBSD_missing) == "HDL_CHOLESTEROL (mg/dL)"] <- "HDL"
-names(IBSD_missing)[names(IBSD_missing) == "LDL_CHOLESTEROL (mg/dL)"] <- "LDL"
-names(IBSD_missing)[names(IBSD_missing) == "CREATININE (mg/dL)"] <- "Creatinine"
+NIBG_missing_joined_other$age = ifelse(is.na(NIBG_missing_joined_other$age), trunc((NIBG_missing_joined_other$name_dob_1.dob %--% NIBG_missing_joined_other$introduction_1.examination_date) / years(1)),
+                                       NIBG_missing_joined_other$age)
 
-colnames(IBSD_missing) <- gsub(x = colnames(IBSD_missing), pattern = "\\:", replacement = ".")  
 
-IBSD_missing = IBSD_missing[,!names(IBSD_missing) %in% (setdiff(colnames(IBSD_missing), colnames(ft)))]
 
-new_cols = c(setdiff(colnames(ft), colnames(IBSD_missing)))
+NIBG_missing_joined_other$age_withBBC = NIBG_missing_joined_other$age
+NIBG_missing_joined_other$age_withBBC = ifelse(is.na(NIBG_missing_joined_other$age_withBBC), NIBG_missing_joined_other$Age,
+                                         NIBG_missing_joined_other$age_withBBC)
+ft = rbind(ft, NIBG_missing_joined_other)
+
+
+# History of illness in multiple lines ------------------------------------------------
+
+ft$history_illness.name_medication = gsub('\n', ',', ft$history_illness.name_medication)
+ft$history_illness.history_illness_self = gsub('\n', ',', ft$history_illness.history_illness_self)
+ft$history_illness.history_illness_father = gsub('\n', ',', ft$history_illness.history_illness_father)
+ft$history_illness.history_illness_mother = gsub('\n', ',', ft$history_illness.history_illness_mother)
+ft$history_illness.history_illness_family = gsub('\n', ',', ft$history_illness.history_illness_family)
 library(dplyr)
-IBSD_missing = IBSD_missing %>% 
-  mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
+ft <- ft %>% 
+  mutate(across(everything(),  trimws, which = "both"))
 
-IBSD_missing = IBSD_missing[names(ft)]
+ft$history_illness.name_medication = gsub('Ã°Â\u009fÂ\u0092Â\u008a', '', ft$history_illness.name_medication)
 
-IBSD_missing$calc_age = IBSD_missing$name_dob_1.approx_age
-IBSD_missing$calc_age = as.numeric(IBSD_missing$calc_age)
+# trying to fill in missing ethnicities -----------------------------------
 
-IBSD_missing$calc1 = IBSD_missing$calc_age
-IBSD_missing$calc1 = ifelse(is.na(IBSD_missing$calc1), IBSD_missing$Age,
-                                   IBSD_missing$calc1)
+CBRsamples = read_xlsx("GWAS and WGS updates _to be refered (1).xlsx", sheet = 1)
+colnames(CBRsamples)[colnames(CBRsamples) == "Local IDs"] = "LocalID"
+colnames(CBRsamples)[colnames(CBRsamples) == "Ethnic group"] = "Ethnicity"
 
-ft = rbind(ft, IBSD_missing)
+ft$name_dob_1.ethnicity[ft$LocalID %in% CBRsamples$LocalID] <- 
+  CBRsamples$Ethnicity[match(ft$LocalID[ft$LocalID %in% CBRsamples$LocalID], 
+                             CBRsamples$LocalID)]
 
-# Numeric conversion again ------------------------------------------------
+ft$name_dob_1.ethnicity = tolower(ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity = gsub("(sanscago)", "", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="adikarnataka ()"] = "adikarnataka"
+ft$name_dob_1.ethnicity <- sub("vakkaliga.*", "vakkaliga", ft$name_dob_1.ethnicity)
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="hassan iyengar"] = "iyengar"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="hebbar iyengar"] = "iyengar"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="mysore iyengar"] = "iyengar"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="iyengar (from 67 samples)"] = "iyengar"
+#ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="k1"] = "K1"
+#ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="k2"] = "K2"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="saryuparin brahmin"] = "saryuparin_brahmin"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="vaidiki brahmin"] = "vaidiki_brahmin"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="kashyap gotra"] = "saryuparin_brahmin"
+
+skims_df1 = read.table("SKIMS_final.csv", sep = ",", header = T, fill = T)
+skims_df1[skims_df1==""] = NA
+skims_df1 = skims_df1[-which(is.na(skims_df1$Barcode)),]
+
+ft$name_dob_1.ethnicity[ft$LocalID %in% skims_df1$Barcode & is.na(ft$name_dob_1.ethnicity)] <- 
+  skims_df1$Ethnic[match(ft$LocalID[ft$LocalID %in% skims_df1$Barcode & is.na(ft$name_dob_1.ethnicity)], 
+                         skims_df1$Barcode)]
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="KM"] = "kashmiri_muslim"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="KP"] = "kashmiri_pandit"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="Baltis"] = "balti"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="Dogras"] = "dogra"
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="G&B"] = "gujjar_and_bakkarwal"
+
+ft$name_dob_1.ethnicity[ft$LocalID=="IISR/G/000241"] = "deshastha_brahmin"
+ft$name_dob_1.ethnicity[ft$LocalID=="IISR/G/001517"] = "kolis"
+
+
+
+# converting numeric ------------------------------------------------------
 
 ft$FBS_Fasting_Blood_Glucose = as.numeric(ft$FBS_Fasting_Blood_Glucose)
 ft$HbA1C_Glycosylated_Haemoglobin = as.numeric(ft$HbA1C_Glycosylated_Haemoglobin)
@@ -3774,7 +3024,7 @@ ft$Vitamin_D_25_Hydroxy = as.numeric(ft$Vitamin_D_25_Hydroxy)
 ft$Free_T3 = as.numeric(ft$Free_T3)
 ft$Free_T4 = as.numeric(ft$Free_T4)
 ft$Hs.CRP_High_Sensitivity_CRP = as.numeric(ft$Hs.CRP_High_Sensitivity_CRP)
-ft$Transferrin = as.numeric(ft$Transferrin)
+#ft$Transferrin = as.numeric(ft$Transferrin)
 ft$Polymorphs = as.numeric(ft$Polymorphs)
 ft$Sodium = as.numeric(ft$Sodium)
 ft$Potassium = as.numeric(ft$Potassium)
@@ -3807,9 +3057,8 @@ ft$Granulocytes = as.numeric(ft$Granulocytes)
 ft$Granulocyte_count = as.numeric(ft$Granulocyte_count)
 ft$MID = as.numeric(ft$MID)
 ft$MID_Percent = as.numeric(ft$MID_Percent)
-ft$calc_age = as.numeric(ft$calc_age)
-ft$calc1 = as.numeric(ft$calc1)
-
+ft$age = as.numeric(ft$age)
+ft$age_withBBC = as.numeric(ft$age_withBBC)
 
 # Blood count rescaling ---------------------------------------------------
 
@@ -3844,8 +3093,8 @@ ft$WBC_Total_White_Blood_Cell_Count[intersect(which(ft$center == "RGCB"),
 
 # RESCALING NEUTROPHILS
 boxplot(as.numeric(ft$Absolute_Neutrophil_Count) ~ ft$center)
-ft$Absolute_Neutrophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))] =
-  ft$Absolute_Neutrophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))]*1000
+ft$Absolute_Neutrophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', 'MZUA'))] =
+  ft$Absolute_Neutrophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', 'MZUA'))]*1000
 
 ft$Absolute_Neutrophil_Count[intersect(which(ft$center == "IGIB"), 
                                        which(as.numeric(ft$Absolute_Neutrophil_Count) < 500))] = 
@@ -3865,8 +3114,8 @@ ft$Absolute_Neutrophil_Count[intersect(which(ft$center == "CBRI"),
 # #RESCALING BASOPHILS (upto 150)
 boxplot(as.numeric(ft$Absolute_Basophil_Count) ~ ft$center)
 
-ft$Absolute_Basophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))] = 
-  ft$Absolute_Basophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))]*1000
+ft$Absolute_Basophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', 'MZUA'))] = 
+  ft$Absolute_Basophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', 'MZUA'))]*1000
 # 
 ft$Absolute_Basophil_Count[intersect(which(ft$center == "IGIB"), 
                                      which(as.numeric(ft$Absolute_Basophil_Count) < 1))] = 
@@ -3884,8 +3133,8 @@ ft$Absolute_Basophil_Count[intersect(which(ft$center == "CBRI"),
 
 #RESCALING EOSINOPHILS (upto 444 cells/mm3) 
 boxplot(as.numeric(ft$Absolute_Eosinophil_Count) ~ ft$center)
-ft$Absolute_Eosinophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))] =
-  ft$Absolute_Eosinophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))]*1000
+ft$Absolute_Eosinophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', 'MZUA'))] =
+  ft$Absolute_Eosinophil_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', 'MZUA'))]*1000
 
 ft$Absolute_Eosinophil_Count[intersect(which(ft$center == "IGIB"), 
                                        which(as.numeric(ft$Absolute_Eosinophil_Count) < 1))] = 
@@ -3899,8 +3148,8 @@ ft$Absolute_Eosinophil_Count[intersect(which(ft$center == "CBRI"),
 
 #RESCALING LYMPHOCYTES (upto 4600/mm3)
 boxplot(as.numeric(ft$Absolute_Lymphocyte_Count) ~ ft$center)
-ft$Absolute_Lymphocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'SKIM'))] =
-  ft$Absolute_Lymphocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'SKIM'))]*1000
+ft$Absolute_Lymphocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'SKIM', 'MZUA'))] =
+  ft$Absolute_Lymphocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'SKIM', 'MZUA'))]*1000
 
 ft$Absolute_Lymphocyte_Count[intersect(which(ft$center == "IGIB"), 
                                        which(as.numeric(ft$Absolute_Lymphocyte_Count) < 100))] = 
@@ -3922,8 +3171,8 @@ boxplot(as.numeric(ft$Absolute_Monocyte_Count) ~ ft$center)
 ft$Absolute_Monocyte_Count[ft$LocalID %in% IGIB$LocalID] <- IGIB$Absolute_Monocyte_Count[match(ft$LocalID[ft$LocalID %in% IGIB$LocalID], IGIB$LocalID)]
 
 ft$Absolute_Monocyte_Count = as.numeric(ft$Absolute_Monocyte_Count)
-ft$Absolute_Monocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))] =
-  ft$Absolute_Monocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD'))]*1000
+ft$Absolute_Monocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', 'MZUA'))] =
+  ft$Absolute_Monocyte_Count[which(ft$center %in% c('NIBG','ILSB', 'IBSD', "MZUA"))]*1000
 
 ft$Absolute_Monocyte_Count[intersect(which(ft$center == "IGIB"), 
                                      which(as.numeric(ft$Absolute_Monocyte_Count) < 10))] = 
@@ -3931,9 +3180,9 @@ ft$Absolute_Monocyte_Count[intersect(which(ft$center == "IGIB"),
                                                   which(as.numeric(ft$Absolute_Monocyte_Count) < 10))]) * 1000
 
 ft$Absolute_Monocyte_Count[intersect(which(ft$center == "CBRI"), 
-                                     which(as.numeric(ft$Absolute_Monocyte_Count) < 100))] = 
+                                     which(as.numeric(ft$Absolute_Monocyte_Count) < 10))] = 
   as.numeric(ft$Absolute_Monocyte_Count[intersect(which(ft$center == "CBRI"), 
-                                                  which(as.numeric(ft$Absolute_Monocyte_Count) < 100))]) * 1000
+                                                  which(as.numeric(ft$Absolute_Monocyte_Count) < 10))]) * 1000
 
 #RESCALING PLATELETS (upto 4.5lakh/mm3) 
 boxplot(as.numeric(ft$Platelet_Count) ~ ft$center)
@@ -3962,6 +3211,11 @@ ft$Platelet_Count[intersect(which(ft$center == "IBSD"),
   as.numeric(ft$Platelet_Count[intersect(which(ft$center == "IBSD"), 
                                          which(as.numeric(ft$Platelet_Count) < 10))]) * 100000
 
+ft$Platelet_Count[intersect(which(ft$center == "IBSD"), 
+                            which(as.numeric(ft$Platelet_Count) > 10 & as.numeric(ft$Platelet_Count)<1000))] = 
+  as.numeric(ft$Platelet_Count[intersect(which(ft$center == "IBSD"), 
+                                         which(as.numeric(ft$Platelet_Count) > 10 & as.numeric(ft$Platelet_Count)<1000))]) * 1000
+
 ft$Platelet_Count[intersect(which(ft$center == "CCMB"), 
                             which(as.numeric(ft$Platelet_Count) < 100))] = 
   as.numeric(ft$Platelet_Count[intersect(which(ft$center == "CCMB"), 
@@ -3982,16 +3236,6 @@ ft$Platelet_Count[intersect(which(ft$center == "RGCB"),
   as.numeric(ft$Platelet_Count[intersect(which(ft$center == "RGCB"), 
                                          which(as.numeric(ft$Platelet_Count) <10))]) * 100000
 
-# density(ft$Platelet_Count[which(ft$center=="SKIM")], na.rm = TRUE)
-# ft$Platelet_Count[intersect(which(ft$center == "SKIM"), 
-#                     which(as.numeric(ft$Platelet_Count) > 99))] = 
-#   as.numeric(ft$Platelet_Count[intersect(which(ft$center == "SKIM"), 
-#                   which(as.numeric(ft$Platelet_Count) > 99))]) * 1000
-# 
-# ft$Platelet_Count[intersect(which(ft$center == "CCMB"), 
-#                             which(as.numeric(ft$Platelet_Count) > 99 & as.numeric(ft$Platelet_Count)<10000))] = 
-#   as.numeric(ft$Platelet_Count[intersect(which(ft$center == "CCMB"), 
-#                             which(as.numeric(ft$Platelet_Count) > 99 & as.numeric(ft$Platelet_Count)<10000))]) * 1000
 
 #T3_TOTAL
 boxplot(as.numeric(ft$T3_Total) ~ ft$center)
@@ -4003,9 +3247,23 @@ ft$T3_Total[intersect(which(ft$center == "CBRI"),
   as.numeric(ft$T3_Total[intersect(which(ft$center == "CBRI"), 
                                    which(as.numeric(ft$T3_Total) < 10))]) / 0.01536
 
+ft$T3_Total[intersect(which(ft$center == "IBSD"), 
+                      which(as.numeric(ft$T3_Total) < 10))] = 
+  as.numeric(ft$T3_Total[intersect(which(ft$center == "IBSD"), 
+                                   which(as.numeric(ft$T3_Total) < 10))]) / 0.01536
+
+ft$T3_Total[intersect(which(ft$center == "ILSB"), 
+                      which(as.numeric(ft$T3_Total) < 10))] = 
+  as.numeric(ft$T3_Total[intersect(which(ft$center == "ILSB"), 
+                                   which(as.numeric(ft$T3_Total) < 10))]) / 0.01536
+
+
+
 # Outlier resolution ------------------------------------------------------
 
-ft$RBS[which(ft$center == "CBRI" & ft$RBS == 0)] <- NA
+#ft$RBS[which(ft$center == "CBRI" & ft$RBS == 0)] <- NA
+
+ft$RBS[which(ft$RBS == 0)] <- NA
 ft$FBS_Fasting_Blood_Glucose[which(ft$FBS_Fasting_Blood_Glucose == 0)] <- NA
 ft$FBS_Fasting_Blood_Glucose[which(ft$FBS_Fasting_Blood_Glucose < 20)] <- NA
 ft$HbA1C_Glycosylated_Haemoglobin[ft$HbA1C_Glycosylated_Haemoglobin<0] = NA
@@ -4037,7 +3295,10 @@ ft$anthropometry.height[which(as.numeric(ft$anthropometry.height)>500)] = NA
 ft$anthropometry.sys_bp[which(as.numeric(ft$anthropometry.sys_bp)>500)] = NA
 ft$anthropometry.waist_cir[which(as.numeric(ft$anthropometry.waist_cir)>300)] = NA
 ft$anthropometry.weight[which(as.numeric(ft$anthropometry.weight)==0)] = NA
-ft$anthropometry.weight[which(as.numeric(ft$anthropometry.weight)>500)] = NA
+ft$anthropometry.weight[which(as.numeric(ft$anthropometry.weight)>300)] = NA
+
+ft$anthropometry.hip_cir[as.numeric(ft$anthropometry.hip_cir)>400] = NA
+
 ft$Basophils[which(ft$center=='GBRC' & is.na(ft$Basophils))] = 0
 ft$Basophils[which(as.numeric(ft$Basophils)>10)] = NA
 ft$BUN[which(ft$BUN==0)]=NA
@@ -4060,6 +3321,7 @@ ft$Globulin[which(ft$Globulin==0)]=NA
 ft$Globulin[which(ft$Globulin>10)]=NA
 #ft$GLYCOSYLATED_Hb_IFCC[which(ft$GLYCOSYLATED_Hb_IFCC==0)]=NA
 ft$HB_Haemoglobin[which(ft$HB_Haemoglobin>25)]=NA
+ft$HB_Haemoglobin[which(ft$HB_Haemoglobin<2)]=NA
 ft$HbA1C_Glycosylated_Haemoglobin[which(ft$HbA1C_Glycosylated_Haemoglobin>50)] = NA
 ft$HbA1C_Glycosylated_Haemoglobin[which(ft$HbA1C_Glycosylated_Haemoglobin==0)] = NA
 ft$HDL[which(ft$HDL>500)] = NA
@@ -4108,13 +3370,57 @@ ft$anthropometry.hip_cir[ft$anthropometry.hip_cir>500] = NA
 ft$PCT[ft$PCT>10] = NA
 ft$ALT_SGPT[ft$ALT_SGPT>500] = NA
 ft$LDL[ft$LDL>1000] = NA
-ft$calc_age[ft$calc_age<18] = NA
-ft$calc1[ft$calc1<18] = NA
+ft$age[ft$age<18] = NA
+ft$age_withBBC[ft$age_withBBC<18] = NA
 
+ft$HbA1C_Glycosylated_Haemoglobin[ft$HbA1C_Glycosylated_Haemoglobin==0] = NA
+ft$Hematocrit[ft$Hematocrit==0] = NA
+ft$PDW[ft$PDW==0] = NA
+ft$Vitamin_B12[ft$Vitamin_B12==0] = NA
+ft$T3_Total[ft$T3_Total==0] = NA
+ft$Homocysteine_Levels[ft$Homocysteine_Levels<0] = NA
+ft$C.Peptide[ft$C.Peptide<0] = NA
+ft$Fasting_Insulin_Level[ft$Fasting_Insulin_Level<0] = NA
+ft$Lymphocytes[ft$Lymphocytes==0] = NA
+ft$AST_SGOT[ft$AST_SGOT>500] = NA
+ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="currently_currently_married"] = "currently_married"
+ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="Married"] = "currently_married"
+ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="MARRIED"] = "currently_married"
+ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="Unmarried"] = "never_married"
+ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="Widowed"] = "widowed"
+ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="Divorced"] = "divorced_separated"
+ft$Indirect_Bilirubin[ft$Indirect_Bilirubin<=0] = NA
+ft$Indirect_Bilirubin[ft$Indirect_Bilirubin >10] = NA
 
+ft$name_dob_1.ethnicity[ft$name_dob_1.ethnicity=="sikh"] = "sikhs"
 # correcting languages ----------------------------------------------------
 
 ft$name_dob_1.mother_tongue = tolower(ft$name_dob_1.mother_tongue)
+
+# adding BMI --------------------------------------------------------------
+ft$BMI = (ft$anthropometry.weight)/((ft$anthropometry.height/100)^2)
+ft$BMI[ft$BMI>100] = NA
+ft$BMI = round(ft$BMI, digits = 2)
+
+
+# smoking-alcohol-tobacco -------------------------------------------------
+
+ft$smoking_tobacco_alcohol.alcohol_status = tolower(ft$smoking_tobacco_alcohol.alcohol_status)
+ft$smoking_tobacco_alcohol.chewing_tobacco_status = tolower(ft$smoking_tobacco_alcohol.chewing_tobacco_status)
+ft$smoking_tobacco_alcohol.smoking_status = tolower(ft$smoking_tobacco_alcohol.smoking_status)
+ft$smoking_tobacco_alcohol.alcohol_status[which(ft$smoking_tobacco_alcohol.alcohol_status=="na")]=NA
+ft$smoking_tobacco_alcohol.alcohol_status[which(ft$smoking_tobacco_alcohol.alcohol_status=="yes")]="current"
+ft$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft$smoking_tobacco_alcohol.chewing_tobacco_status=="yes")]="current"
+ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoking_status=="yes")]="current"
+
+
+# removing empty rows -----------------------------------------------------
+ft = ft[-which(rowSums(is.na(ft))>115 & ft$center != "CBRI"),]
+
+# check states at this point ----------------------------------------------
+
+#whether all LocalIDs are in the correct state
+#Classify the different centres in each state and look up if something looks off
 
 # Sequenced samples -------------------------------------------------------
 
@@ -4143,9 +3449,152 @@ merged_seq_samples1 = merged_seq_samples1[!(merged_seq_samples1$LocalID %in% new
 # Putting back some resolved dups -----------------------------------------
 
 resolveddups = read_xlsx("New Duplicates.xlsx")
+resolveddups = subset(resolveddups, select = -Transferrin)
+resolveddups$anthropometry.height = as.numeric(resolveddups$anthropometry.height)
+resolveddups$anthropometry.weight = as.numeric(resolveddups$anthropometry.weight)
+resolveddups$BMI = (resolveddups$anthropometry.weight)/(((resolveddups$anthropometry.height)/100)^2)
+resolveddups$BMI[resolveddups$BMI>100] = NA
+resolveddups$BMI = round(resolveddups$BMI, digits = 2)
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="agrawal"] = "aggarwal"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="ansari"] = "ansari_sunni"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="audichya sahastra"] = "audichya_sahastra"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="bhil meena"] = "bhil_meena"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="chik baraik"] = "chik_baraik"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="desastha brahmin"] = "deshastha_brahmin"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="dongri bhil"] = "dongri_bhil"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="garhwali brahmin"] = "garhwali_brahmin"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="gujjar and bakarwal"] = "gujjar_and_bakkarwal"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="iyangar"] = "iyengar"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="jat"] = "jats"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="kannet"] = "kannets"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="kanyakubj brahmin"] = "kanyakubj_brahmin"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="kashmiri/muslim"] = "kashmiri_muslim"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="kashmiri/pandit"] = "kashmiri_pandit"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="khatri"] = "khatri_pb"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="kokanastha brahmin"] = "konkonastha_brahmin"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="koli"] = "kolis"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="kurmi mahato"] = "kudmi_mahato"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="kuruma"] = "kuruman"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="lingayats"] = "lingayath"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="NA"] = NA
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="nambudri brahmin"] = "namboodari"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="oriya brahmin"] = "oriya_brahmin"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="rajbanshi"] = "rajbangshi"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="saryuparin brahmin"] = "saryuparin_brahmin"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="sikh"] = "sikhs"
+resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="vaidiki brahmin"] = "vaidiki_brahmin"
+resolveddups<-resolveddups[names(merged_seq_samples1)]
+
+resolveddups$FBS_Fasting_Blood_Glucose = as.numeric(resolveddups$FBS_Fasting_Blood_Glucose)
+resolveddups$HbA1C_Glycosylated_Haemoglobin = as.numeric(resolveddups$HbA1C_Glycosylated_Haemoglobin)
+#resolveddups$HbA1C_Glycosylated_Haemoglobin[resolveddups$HbA1C_Glycosylated_Haemoglobin == 0] = NA
+#merged_df_ft1 = read.table("Added_addnlt_Apr19.txt", sep = "\t", header = T, fill= T, encoding = 'latin1')
+resolveddups$Urea = as.numeric(resolveddups$Urea)
+resolveddups$Creatinine = as.numeric(resolveddups$Creatinine)
+resolveddups$Total_Bilirubin = as.numeric(resolveddups$Total_Bilirubin)
+resolveddups$ALT_SGPT = as.numeric(resolveddups$ALT_SGPT)
+resolveddups$AST_SGOT = as.numeric(resolveddups$AST_SGOT)
+resolveddups$Alkaline_Phosphatase = as.numeric(resolveddups$Alkaline_Phosphatase)
+resolveddups$Cholesterol = as.numeric(resolveddups$Cholesterol)
+resolveddups$Triglycerides = as.numeric(resolveddups$Triglycerides)
+resolveddups$HDL = as.numeric(resolveddups$HDL)
+resolveddups$LDL = as.numeric(resolveddups$LDL)
+resolveddups$T3_Total = as.numeric(resolveddups$T3_Total)
+resolveddups$T4_Total = as.numeric(resolveddups$T4_Total)
+resolveddups$TSH = as.numeric(resolveddups$TSH)
+resolveddups$Homocysteine_Levels = as.numeric(resolveddups$Homocysteine_Levels)
+resolveddups$Vitamin_B12 = as.numeric(resolveddups$Vitamin_B12)
+resolveddups$Folic_Acid = as.numeric(resolveddups$Folic_Acid)
+resolveddups$Fasting_Insulin_Level = as.numeric(resolveddups$Fasting_Insulin_Level)
+resolveddups$C.Peptide = as.numeric(resolveddups$C.Peptide)
+resolveddups$HB_Haemoglobin = as.numeric(resolveddups$HB_Haemoglobin)
+resolveddups$RBC_Red_Blood_Cell_Count = as.numeric(resolveddups$RBC_Red_Blood_Cell_Count) #this is probably in millions
+resolveddups$MCH_Mean_Corpuscular_Hb = as.numeric(resolveddups$MCH_Mean_Corpuscular_Hb)
+resolveddups$MCHC_Mean_Corpuscular_Hb_Concn = as.numeric(resolveddups$MCHC_Mean_Corpuscular_Hb_Concn)
+resolveddups$MCV_Mean_Corpuscular_Volume = as.numeric(resolveddups$MCV_Mean_Corpuscular_Volume)
+resolveddups$RDW_Red_Cell_Distribution_Width = as.numeric(resolveddups$RDW_Red_Cell_Distribution_Width)
+resolveddups$WBC_Total_White_Blood_Cell_Count = as.numeric(resolveddups$WBC_Total_White_Blood_Cell_Count)
+resolveddups$Basophils = as.numeric(resolveddups$Basophils)
+resolveddups$Eosinophils = as.numeric(resolveddups$Eosinophils)
+resolveddups$Lymphocytes = as.numeric(resolveddups$Lymphocytes)
+resolveddups$Monocytes = as.numeric(resolveddups$Monocytes)
+resolveddups$Neutrophils = as.numeric(resolveddups$Neutrophils)
+resolveddups$Platelet_Count = as.numeric(resolveddups$Platelet_Count)
+resolveddups$A_G_Ratio_Albumin_Globulin = as.numeric(resolveddups$A_G_Ratio_Albumin_Globulin)
+resolveddups$Absolute_Neutrophil_Count = as.numeric(resolveddups$Absolute_Neutrophil_Count)
+resolveddups$Absolute_Basophil_Count = as.numeric(resolveddups$Absolute_Basophil_Count)
+resolveddups$Absolute_Eosinophil_Count = as.numeric(resolveddups$Absolute_Eosinophil_Count)
+resolveddups$Absolute_Lymphocyte_Count = as.numeric(resolveddups$Absolute_Lymphocyte_Count)
+resolveddups$Absolute_Monocyte_Count = as.numeric(resolveddups$Absolute_Monocyte_Count)
+resolveddups$CHOL_HDL_Ratio = as.numeric(resolveddups$CHOL_HDL_Ratio)
+resolveddups$Direct_Bilirubin = as.numeric(resolveddups$Direct_Bilirubin)
+resolveddups$ESR = as.numeric(resolveddups$ESR)
+resolveddups$Estimated_Average_Glucose = as.numeric(resolveddups$Estimated_Average_Glucose)
+resolveddups$Gamma_GT_GGTP = as.numeric(resolveddups$Gamma_GT_GGTP)
+resolveddups$Globulin = as.numeric(resolveddups$Globulin)
+resolveddups$Indirect_Bilirubin = as.numeric(resolveddups$Indirect_Bilirubin)
+resolveddups$LDL_HDL_Ratio = as.numeric(resolveddups$LDL_HDL_Ratio)
+resolveddups$Hematocrit = as.numeric(resolveddups$Hematocrit)
+resolveddups$Albumin = as.numeric(resolveddups$Albumin)
+resolveddups$Protein = as.numeric(resolveddups$Protein)
+resolveddups$VLDL = as.numeric(resolveddups$VLDL)
+resolveddups$RDW_SD = as.numeric(resolveddups$RDW_SD)
+resolveddups$CRP = as.numeric(resolveddups$CRP)
+resolveddups$MPV_Mean_Platelet_Volume = as.numeric(resolveddups$MPV_Mean_Platelet_Volume)
+resolveddups$Immature_granulocyte_perc = as.numeric(resolveddups$Immature_granulocyte_perc)
+#resolveddups$IG_0.0.3 = as.numeric(resolveddups$IG_0.0.3)
+resolveddups$PDW = as.numeric(resolveddups$PDW)
+resolveddups$PLCR = as.numeric(resolveddups$PLCR)
+resolveddups$PCT = as.numeric(resolveddups$PCT)
+resolveddups$RBS = as.numeric(resolveddups$RBS)
+resolveddups$GLYCOSYLATED_Hb_IFCC = as.numeric(resolveddups$GLYCOSYLATED_Hb_IFCC)
+resolveddups$BUN = as.numeric(resolveddups$BUN)
+resolveddups$BUN_Sr_creatinine = as.numeric(resolveddups$BUN_Sr_creatinine)
+resolveddups$Uric_Acid = as.numeric(resolveddups$Uric_Acid)
+resolveddups$Estimated_Glomerular_filtration_rate = as.numeric(resolveddups$Estimated_Glomerular_filtration_rate)
+resolveddups$NonHDL_Cholesterol = as.numeric(resolveddups$NonHDL_Cholesterol)
+resolveddups$Vitamin_D_25_Hydroxy = as.numeric(resolveddups$Vitamin_D_25_Hydroxy)
+resolveddups$Free_T3 = as.numeric(resolveddups$Free_T3)
+resolveddups$Free_T4 = as.numeric(resolveddups$Free_T4)
+resolveddups$Hs.CRP_High_Sensitivity_CRP = as.numeric(resolveddups$Hs.CRP_High_Sensitivity_CRP)
+#resolveddups$Transferrin = as.numeric(resolveddups$Transferrin)
+resolveddups$Polymorphs = as.numeric(resolveddups$Polymorphs)
+resolveddups$Sodium = as.numeric(resolveddups$Sodium)
+resolveddups$Potassium = as.numeric(resolveddups$Potassium)
+resolveddups$SerumIronStudy_TIBC_UIBC = as.numeric(resolveddups$SerumIronStudy_TIBC_UIBC)
+resolveddups$Transferrin_Saturation = as.numeric(resolveddups$Transferrin_Saturation)
+resolveddups$Immature_granulocytes = as.numeric(resolveddups$Immature_granulocytes)
+resolveddups$LDH_1 = as.numeric(resolveddups$LDH_1)
+resolveddups$Total_Calcium = as.numeric(resolveddups$Total_Calcium)
+resolveddups$Serum_Iron = as.numeric(resolveddups$Serum_Iron)
+resolveddups$MENTZ1 = as.numeric(resolveddups$MENTZ1)
+resolveddups$NLR_4 = as.numeric(resolveddups$NLR_4)
+resolveddups$PO4_mg.dl = as.numeric(resolveddups$PO4_mg.dl)
+resolveddups$Cl._mEq.L = as.numeric(resolveddups$Cl._mEq.L)
+resolveddups$SGOT_SGPT = as.numeric(resolveddups$SGOT_SGPT)
+resolveddups$CHOL.LDL_Ratio = as.numeric(resolveddups$CHOL.LDL_Ratio)
+resolveddups$APB. = as.numeric(resolveddups$APB.)
+resolveddups$APOA = as.numeric(resolveddups$APOA)
+resolveddups$APOB = as.numeric(resolveddups$APOB)
+resolveddups$LPA = as.numeric(resolveddups$LPA)
+resolveddups$anthropometry.head_cir = as.numeric(resolveddups$anthropometry.head_cir)
+resolveddups$anthropometry.height = as.numeric(resolveddups$anthropometry.height)
+resolveddups$anthropometry.hip_cir = as.numeric(resolveddups$anthropometry.hip_cir)
+resolveddups$anthropometry.sys_bp = as.numeric(resolveddups$anthropometry.sys_bp)
+resolveddups$anthropometry.dia_bp = as.numeric(resolveddups$anthropometry.dia_bp)
+resolveddups$anthropometry.body_fat = as.numeric(resolveddups$anthropometry.body_fat)
+resolveddups$anthropometry.waist_cir = as.numeric(resolveddups$anthropometry.waist_cir)
+resolveddups$anthropometry.weight = as.numeric(resolveddups$anthropometry.weight)
+resolveddups$anthropometry.glucose_mg_dl = as.numeric(resolveddups$anthropometry.glucose_mg_dl)
+resolveddups$Granulocytes = as.numeric(resolveddups$Granulocytes)
+resolveddups$Granulocyte_count = as.numeric(resolveddups$Granulocyte_count)
+resolveddups$MID = as.numeric(resolveddups$MID)
+resolveddups$MID_Percent = as.numeric(resolveddups$MID_Percent)
+resolveddups$age = as.numeric(resolveddups$age)
+resolveddups$age_withBBC = as.numeric(resolveddups$age_withBBC)
+resolveddups = resolveddups[-which(rowSums(is.na(resolveddups))>90),]
 
 merged_seq_samples1 = rbind(merged_seq_samples1, resolveddups)
-
 
 # How did these samples go missing? ---------------------------------------
 
@@ -4162,16 +3611,19 @@ missedsamples = missedsamples %>%
   mutate(!!!setNames(rep(NA, length(new_cols)), new_cols))
 
 missedsamples<-missedsamples[names(merged_seq_samples1)]
+missedsamples$name_dob_1.ethnicity[missedsamples$name_dob_1.ethnicity=="agrawal"] = "aggarwal"
+missedsamples$name_dob_1.ethnicity[missedsamples$name_dob_1.ethnicity=="jat"] = "jats"
+missedsamples$name_dob_1.ethnicity[missedsamples$name_dob_1.ethnicity=="kannet"] = "kannets"
+missedsamples$name_dob_1.ethnicity[missedsamples$name_dob_1.ethnicity=="kokanastha_brahmin"] = "konkonastha_brahmin"
+
+missedsamples$age = missedsamples$name_dob_1.age_on_interview
+missedsamples$age = ifelse(is.na(missedsamples$age), missedsamples$name_dob_1.approx_age,
+                           missedsamples$age)
+
+missedsamples$age_withBBC = missedsamples$age
 
 merged_seq_samples1 = rbind(merged_seq_samples1, missedsamples)
 
-
-# Some final cleaning -----------------------------------------------------
-
-merged_seq_samples1$name_dob_1.ethnicity <- sub("[ /]", "_", merged_seq_samples1$name_dob_1.ethnicity)
-#merged_seq_samples1$name_dob_1.ethnicity <- sub("/", "_", merged_seq_samples1$name_dob_1.ethnicity)
-#merged_seq_samples1$name_dob_1.ethnicity[which(merged_seq_samples1$name_dob_1.ethnicity=="bison_horn maria")]="bison_horn_maria"
-# Adding SeqIDs -----------------------------------------------------------
 
 merged_seq_samples1$SeqID <- NA
 merged_seq_samples1$ethnicity_seqfile = NA
@@ -4184,71 +3636,18 @@ merged_seq_samples1$gender_seqfile[merged_seq_samples1$LocalID %in% seq_samples$
 merged_seq_samples1$gender_seqfile[merged_seq_samples1$gender_seqfile=='xx'] = 'female'
 merged_seq_samples1$gender_seqfile[merged_seq_samples1$gender_seqfile=='xy'] = 'male'
 
-# comparing ethnicities ---------------------------------------------------
-
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='adikarnataka'] = 'adi_karnataka'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='aggarwal'] = 'agrawal'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='ansari_sunni'] = 'ansari'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='banjara_rj'] = 'banjara'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='bhoksa_uk'] = 'bhoksa'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='chilk baraik'] = 'chik_baraik'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='deshastha_brahmin'] = 'desastha_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='garhwali_brahmins'] = 'garhwali_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='gujjar_and_bakkarwal'] = 'gujjar_and_bakarwal'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='iyenger'] = 'iyangar'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='iyengar'] = 'iyangar'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kannets'] = 'kannet'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kanyakubj brahmin up'] = 'kanyakubj_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kanyakubj_brahmin'] = 'kanyakubj_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kashmiri_muslim'] = 'kashmiri_muslim'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kashmiri_pandit'] = 'kashmiri_pandit'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kayastha_up'] = 'kayastha'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='khatri_pb'] = 'khatri'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kholis'] = 'koli'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kol'] = 'koli'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kol (tribe'] = 'koli'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kolis'] = 'koli'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='konkonastha_brahmin'] = 'kokanastha_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='konkanastha brahmin'] = 'kokanastha_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='korku (tribe)'] = 'korku'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kudmi mahato'] = 'kurmi_mahato'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kudmi_mahato'] = 'kurmi_mahato'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kururman'] = 'kuruma'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='kuruman'] = 'kuruma'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='lingayath'] = 'lingayats'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='maithil_brahmin'] = 'maithil_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='maithili brahmin'] = 'maithil_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='maithili_brahmin'] = 'maithil_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='marathas'] = 'maratha'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='namboodari'] = 'nambudri_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='rajbangshi'] = 'rajbanshi'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='rajput_aiims'] = 'rajput'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='rajput_gbrc'] = 'rajput'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='saharia'] = 'sahariya'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='sarayuparin'] = 'saryuparin_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='saryuparin_brahmin'] = 'saryuparin_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='sikhs'] = 'sikh'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='thiya'] = 'tiya'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='vaideki'] = 'vaidiki_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='vaidiki'] = 'vaidiki_brahmin'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='vakkaliga'] = 'vakaliga'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='yadav_br'] = 'yadav'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='yadav_up'] = 'yadav'
-merged_seq_samples1$ethnicity_seqfile[merged_seq_samples1$ethnicity_seqfile=='jats'] = 'jat'
-
-# correcting ethnicities --------------------------------------------------
-#IDK WHY THIS DID NOT WORK WHEN I RAN IT BEFORE
-merged_seq_samples1$name_dob_1.ethnicity <- sub("[ /]", "_", merged_seq_samples1$name_dob_1.ethnicity)
 
 eth_neq = merged_seq_samples1[merged_seq_samples1$name_dob_1.ethnicity != merged_seq_samples1$ethnicity_seqfile,]
 eth_neq = subset(eth_neq, select = c("name_dob_1.ethnicity", "ethnicity_seqfile", "LocalID", "center"))
 
 eth_neq = eth_neq[-which(is.na(eth_neq$LocalID)),]
+eth_neq = eth_neq[-which(eth_neq$ethnicity_seqfile=="kholis"),]
+eth_neq = eth_neq[-which(eth_neq$ethnicity_seqfile=="kol"),]
 
 eth_neq$correct = eth_neq$ethnicity_seqfile
 eth_neq$correct[eth_neq$correct=="kashmiri_pandit"] = "kashmiri_muslim"
-eth_neq$correct[eth_neq$LocalID== "RGCB/L/005207"] = "tiya"
-eth_neq$correct[eth_neq$LocalID== "RGCB/L/005212"] = "tiya"
+eth_neq$correct[eth_neq$LocalID== "RGCB/L/005207"] = "thiya"
+eth_neq$correct[eth_neq$LocalID== "RGCB/L/005212"] = "thiya"
 merged_seq_samples1$name_dob_1.ethnicity[merged_seq_samples1$LocalID %in% eth_neq$LocalID] <- eth_neq$correct[match(merged_seq_samples1$LocalID[merged_seq_samples1$LocalID %in% eth_neq$LocalID], eth_neq$LocalID)]
 
 
@@ -4258,774 +3657,56 @@ merged_seq_samples1$name_dob_1.ethnicity = ifelse(is.na(merged_seq_samples1$name
                                                   merged_seq_samples1$ethnicity_seqfile, 
                                                   merged_seq_samples1$name_dob_1.ethnicity)
 
-# conversion to numeric ---------------------------------------------------
 
-merged_seq_samples1$FBS_Fasting_Blood_Glucose = as.numeric(merged_seq_samples1$FBS_Fasting_Blood_Glucose)
-merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin = as.numeric(merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin)
-#merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin[merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin == 0] = NA
-#merged_df_ft1 = read.table("Added_addnlt_Apr19.txt", sep = "\t", header = T, fill= T, encoding = 'latin1')
-merged_seq_samples1$Urea = as.numeric(merged_seq_samples1$Urea)
-merged_seq_samples1$Creatinine = as.numeric(merged_seq_samples1$Creatinine)
-merged_seq_samples1$Total_Bilirubin = as.numeric(merged_seq_samples1$Total_Bilirubin)
-merged_seq_samples1$ALT_SGPT = as.numeric(merged_seq_samples1$ALT_SGPT)
-merged_seq_samples1$AST_SGOT = as.numeric(merged_seq_samples1$AST_SGOT)
-merged_seq_samples1$Alkaline_Phosphatase = as.numeric(merged_seq_samples1$Alkaline_Phosphatase)
-merged_seq_samples1$Cholesterol = as.numeric(merged_seq_samples1$Cholesterol)
-merged_seq_samples1$Triglycerides = as.numeric(merged_seq_samples1$Triglycerides)
-merged_seq_samples1$HDL = as.numeric(merged_seq_samples1$HDL)
-merged_seq_samples1$LDL = as.numeric(merged_seq_samples1$LDL)
-merged_seq_samples1$T3_Total = as.numeric(merged_seq_samples1$T3_Total)
-merged_seq_samples1$T4_Total = as.numeric(merged_seq_samples1$T4_Total)
-merged_seq_samples1$TSH = as.numeric(merged_seq_samples1$TSH)
-merged_seq_samples1$Homocysteine_Levels = as.numeric(merged_seq_samples1$Homocysteine_Levels)
-merged_seq_samples1$Vitamin_B12 = as.numeric(merged_seq_samples1$Vitamin_B12)
-merged_seq_samples1$Folic_Acid = as.numeric(merged_seq_samples1$Folic_Acid)
-merged_seq_samples1$Fasting_Insulin_Level = as.numeric(merged_seq_samples1$Fasting_Insulin_Level)
-merged_seq_samples1$C.Peptide = as.numeric(merged_seq_samples1$C.Peptide)
-merged_seq_samples1$HB_Haemoglobin = as.numeric(merged_seq_samples1$HB_Haemoglobin)
-merged_seq_samples1$RBC_Red_Blood_Cell_Count = as.numeric(merged_seq_samples1$RBC_Red_Blood_Cell_Count) #this is probably in millions
-merged_seq_samples1$MCH_Mean_Corpuscular_Hb = as.numeric(merged_seq_samples1$MCH_Mean_Corpuscular_Hb)
-merged_seq_samples1$MCHC_Mean_Corpuscular_Hb_Concn = as.numeric(merged_seq_samples1$MCHC_Mean_Corpuscular_Hb_Concn)
-merged_seq_samples1$MCV_Mean_Corpuscular_Volume = as.numeric(merged_seq_samples1$MCV_Mean_Corpuscular_Volume)
-merged_seq_samples1$RDW_Red_Cell_Distribution_Width = as.numeric(merged_seq_samples1$RDW_Red_Cell_Distribution_Width)
-merged_seq_samples1$WBC_Total_White_Blood_Cell_Count = as.numeric(merged_seq_samples1$WBC_Total_White_Blood_Cell_Count)
-merged_seq_samples1$Basophils = as.numeric(merged_seq_samples1$Basophils)
-merged_seq_samples1$Eosinophils = as.numeric(merged_seq_samples1$Eosinophils)
-merged_seq_samples1$Lymphocytes = as.numeric(merged_seq_samples1$Lymphocytes)
-merged_seq_samples1$Monocytes = as.numeric(merged_seq_samples1$Monocytes)
-merged_seq_samples1$Neutrophils = as.numeric(merged_seq_samples1$Neutrophils)
-merged_seq_samples1$Platelet_Count = as.numeric(merged_seq_samples1$Platelet_Count)
-merged_seq_samples1$A_G_Ratio_Albumin_Globulin = as.numeric(merged_seq_samples1$A_G_Ratio_Albumin_Globulin)
-merged_seq_samples1$Absolute_Neutrophil_Count = as.numeric(merged_seq_samples1$Absolute_Neutrophil_Count)
-merged_seq_samples1$Absolute_Basophil_Count = as.numeric(merged_seq_samples1$Absolute_Basophil_Count)
-merged_seq_samples1$Absolute_Eosinophil_Count = as.numeric(merged_seq_samples1$Absolute_Eosinophil_Count)
-merged_seq_samples1$Absolute_Lymphocyte_Count = as.numeric(merged_seq_samples1$Absolute_Lymphocyte_Count)
-merged_seq_samples1$Absolute_Monocyte_Count = as.numeric(merged_seq_samples1$Absolute_Monocyte_Count)
-merged_seq_samples1$CHOL_HDL_Ratio = as.numeric(merged_seq_samples1$CHOL_HDL_Ratio)
-merged_seq_samples1$Direct_Bilirubin = as.numeric(merged_seq_samples1$Direct_Bilirubin)
-merged_seq_samples1$ESR = as.numeric(merged_seq_samples1$ESR)
-merged_seq_samples1$Estimated_Average_Glucose = as.numeric(merged_seq_samples1$Estimated_Average_Glucose)
-merged_seq_samples1$Gamma_GT_GGTP = as.numeric(merged_seq_samples1$Gamma_GT_GGTP)
-merged_seq_samples1$Globulin = as.numeric(merged_seq_samples1$Globulin)
-merged_seq_samples1$Indirect_Bilirubin = as.numeric(merged_seq_samples1$Indirect_Bilirubin)
-merged_seq_samples1$LDL_HDL_Ratio = as.numeric(merged_seq_samples1$LDL_HDL_Ratio)
-merged_seq_samples1$Hematocrit = as.numeric(merged_seq_samples1$Hematocrit)
-merged_seq_samples1$Albumin = as.numeric(merged_seq_samples1$Albumin)
-merged_seq_samples1$Protein = as.numeric(merged_seq_samples1$Protein)
-merged_seq_samples1$VLDL = as.numeric(merged_seq_samples1$VLDL)
-merged_seq_samples1$RDW_SD = as.numeric(merged_seq_samples1$RDW_SD)
-merged_seq_samples1$CRP = as.numeric(merged_seq_samples1$CRP)
-merged_seq_samples1$MPV_Mean_Platelet_Volume = as.numeric(merged_seq_samples1$MPV_Mean_Platelet_Volume)
-merged_seq_samples1$Immature_granulocyte_perc = as.numeric(merged_seq_samples1$Immature_granulocyte_perc)
-#merged_seq_samples1$IG_0.0.3 = as.numeric(merged_seq_samples1$IG_0.0.3)
-merged_seq_samples1$PDW = as.numeric(merged_seq_samples1$PDW)
-merged_seq_samples1$PLCR = as.numeric(merged_seq_samples1$PLCR)
-merged_seq_samples1$PCT = as.numeric(merged_seq_samples1$PCT)
-merged_seq_samples1$RBS = as.numeric(merged_seq_samples1$RBS)
-merged_seq_samples1$GLYCOSYLATED_Hb_IFCC = as.numeric(merged_seq_samples1$GLYCOSYLATED_Hb_IFCC)
-merged_seq_samples1$BUN = as.numeric(merged_seq_samples1$BUN)
-merged_seq_samples1$BUN_Sr_creatinine = as.numeric(merged_seq_samples1$BUN_Sr_creatinine)
-merged_seq_samples1$Uric_Acid = as.numeric(merged_seq_samples1$Uric_Acid)
-merged_seq_samples1$Estimated_Glomerular_filtration_rate = as.numeric(merged_seq_samples1$Estimated_Glomerular_filtration_rate)
-merged_seq_samples1$NonHDL_Cholesterol = as.numeric(merged_seq_samples1$NonHDL_Cholesterol)
-merged_seq_samples1$Vitamin_D_25_Hydroxy = as.numeric(merged_seq_samples1$Vitamin_D_25_Hydroxy)
-merged_seq_samples1$Free_T3 = as.numeric(merged_seq_samples1$Free_T3)
-merged_seq_samples1$Free_T4 = as.numeric(merged_seq_samples1$Free_T4)
-merged_seq_samples1$Hs.CRP_High_Sensitivity_CRP = as.numeric(merged_seq_samples1$Hs.CRP_High_Sensitivity_CRP)
-merged_seq_samples1$Transferrin = as.numeric(merged_seq_samples1$Transferrin)
-merged_seq_samples1$Polymorphs = as.numeric(merged_seq_samples1$Polymorphs)
-merged_seq_samples1$Sodium = as.numeric(merged_seq_samples1$Sodium)
-merged_seq_samples1$Potassium = as.numeric(merged_seq_samples1$Potassium)
-merged_seq_samples1$SerumIronStudy_TIBC_UIBC = as.numeric(merged_seq_samples1$SerumIronStudy_TIBC_UIBC)
-merged_seq_samples1$Transferrin_Saturation = as.numeric(merged_seq_samples1$Transferrin_Saturation)
-merged_seq_samples1$Immature_granulocytes = as.numeric(merged_seq_samples1$Immature_granulocytes)
-merged_seq_samples1$LDH_1 = as.numeric(merged_seq_samples1$LDH_1)
-merged_seq_samples1$Total_Calcium = as.numeric(merged_seq_samples1$Total_Calcium)
-merged_seq_samples1$Serum_Iron = as.numeric(merged_seq_samples1$Serum_Iron)
-merged_seq_samples1$MENTZ1 = as.numeric(merged_seq_samples1$MENTZ1)
-merged_seq_samples1$NLR_4 = as.numeric(merged_seq_samples1$NLR_4)
-merged_seq_samples1$PO4_mg.dl = as.numeric(merged_seq_samples1$PO4_mg.dl)
-merged_seq_samples1$Cl._mEq.L = as.numeric(merged_seq_samples1$Cl._mEq.L)
-merged_seq_samples1$SGOT_SGPT = as.numeric(merged_seq_samples1$SGOT_SGPT)
-merged_seq_samples1$CHOL.LDL_Ratio = as.numeric(merged_seq_samples1$CHOL.LDL_Ratio)
-merged_seq_samples1$APB. = as.numeric(merged_seq_samples1$APB.)
-merged_seq_samples1$APOA = as.numeric(merged_seq_samples1$APOA)
-merged_seq_samples1$APOB = as.numeric(merged_seq_samples1$APOB)
-merged_seq_samples1$LPA = as.numeric(merged_seq_samples1$LPA)
-merged_seq_samples1$anthropometry.head_cir = as.numeric(merged_seq_samples1$anthropometry.head_cir)
-merged_seq_samples1$anthropometry.height = as.numeric(merged_seq_samples1$anthropometry.height)
-merged_seq_samples1$anthropometry.hip_cir = as.numeric(merged_seq_samples1$anthropometry.hip_cir)
-merged_seq_samples1$anthropometry.sys_bp = as.numeric(merged_seq_samples1$anthropometry.sys_bp)
-merged_seq_samples1$anthropometry.dia_bp = as.numeric(merged_seq_samples1$anthropometry.dia_bp)
-merged_seq_samples1$anthropometry.body_fat = as.numeric(merged_seq_samples1$anthropometry.body_fat)
-merged_seq_samples1$anthropometry.waist_cir = as.numeric(merged_seq_samples1$anthropometry.waist_cir)
-merged_seq_samples1$anthropometry.weight = as.numeric(merged_seq_samples1$anthropometry.weight)
-merged_seq_samples1$anthropometry.glucose_mg_dl = as.numeric(merged_seq_samples1$anthropometry.glucose_mg_dl)
-merged_seq_samples1$Granulocytes = as.numeric(merged_seq_samples1$Granulocytes)
-merged_seq_samples1$Granulocyte_count = as.numeric(merged_seq_samples1$Granulocyte_count)
-merged_seq_samples1$MID = as.numeric(merged_seq_samples1$MID)
-merged_seq_samples1$MID_Percent = as.numeric(merged_seq_samples1$MID_Percent)
-merged_seq_samples1$calc_age = as.numeric(merged_seq_samples1$calc_age)
-merged_seq_samples1$calc1 = as.numeric(merged_seq_samples1$calc1)
+# removing BBC missing samples --------------------------------------------
 
-# adding BMI --------------------------------------------------------------
-merged_seq_samples1$BMI = (merged_seq_samples1$anthropometry.weight)/((merged_seq_samples1$anthropometry.height/100)^2)
-merged_seq_samples1$BMI[merged_seq_samples1$BMI>100] = NA
+merged_seq_samples1 = merged_seq_samples1[-which(rowSums(is.na(merged_seq_samples1))>115),]
+merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="ILSB/H/000093"),]
+merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="ILSB/H/000472"),]
+merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="SKIM/M/000356"),]
 
-# Discovered 2 entries missing some data ----------------------------------
+merged_seq_samples1$name_dob_1.gender = tolower(merged_seq_samples1$name_dob_1.gender)
 
-merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="SKIM/M/000356"),] #ODK missing
-merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="NIBG/K/507113"),] # BBC missing
+merged_seq_samples1$region[merged_seq_samples1$region=="Northeast"] = "North-East"
+merged_seq_samples1$region[merged_seq_samples1$region=="Western"] = "West"
+
+# removing required columns -----------------------------------------------
 
 
+gender_neq = merged_seq_samples1[tolower(merged_seq_samples1$name_dob_1.gender) != merged_seq_samples1$gender_seqfile,]
+gender_neq = subset(gender_neq, select = c("name_dob_1.gender", "gender_seqfile", "LocalID", "center"))
 
+gender_neq = gender_neq[-which(is.na(gender_neq$LocalID)),]
 
-# Why the hell does transferrin keep reappearing? -------------------------
-
-merged_seq_samples1$Transferrin_Saturation = ifelse(is.na(merged_seq_samples1$Transferrin_Saturation), merged_seq_samples1$Transferrin, merged_seq_samples1$Transferrin_Saturation)
-merged_seq_samples1 = subset(merged_seq_samples1, select = -Transferrin)
-
-# CCMB asked to remove some IDs -------------------------------------------
-
-SeqID_to_remove = c("DT37452469LT","MO06875345IU","VM59708699ND","TL29128023TJ",
-                    "GY13670793IW","QL03465305BH","PX31475861HO","ZB65722433SL",
-                    "GU07130559PJ","ZV52535027HS","PI73959568GW","KR90748159WN",
-                    "RJ98128345VM","HU60992648IB","PL81748755DU","CZ90242685HD",
-                    "EG17542308FQ","CJ97754736EW","TQ24968081XZ","OL90891039GM",
-                    "UI44307967DZ","VW79405597JK","YT44134005IW","MB48294403TI",
-                    "CK73345351RO","PO28570374OG","TJ95365494TM","ZG47181894HO",
-                    "BD00173379RY","FX72251758WP","ZT09783876FG","HH28501449ZG",
-                    "EB23898463EC","PA67629926IV","PV63564354FU","FV14624091ZF",
-                    "MV84351290YX","PR23913664AM","HX77860958OL","GJ17995861EZ",
-                    "QP48859378TX","KM13151228YU","PX87614328GQ","ON55897048FI","NS69727363CX")
-
-
-merged_seq_samples1 = merged_seq_samples1[(!(merged_seq_samples1$SeqID %in% SeqID_to_remove)),]
+merged_seq_samples1$name_dob_1.gender = merged_seq_samples1$gender_seqfile
 
 merged_seq_samples1 = subset(merged_seq_samples1, select = -ethnicity_seqfile)
 merged_seq_samples1 = subset(merged_seq_samples1, select = -gender_seqfile)
-merged_seq_samples1 = subset(merged_seq_samples1, select = -Age)
+#merged_seq_samples1 = subset(merged_seq_samples1, select = -Age)
 
 totrackdown = seq_samples[!(seq_samples$LocalID %in% merged_seq_samples1$LocalID),]
 
-# converting to numeric ----------------------------------------------------
-merged_seq_samples1$FBS_Fasting_Blood_Glucose = as.numeric(merged_seq_samples1$FBS_Fasting_Blood_Glucose)
-merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin = as.numeric(merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin)
-#merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin[merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin == 0] = NA
-#merged_df_ft1 = read.table("Added_addnlt_Apr19.txt", sep = "\t", header = T, fill= T, encoding = 'latin1')
-merged_seq_samples1$Urea = as.numeric(merged_seq_samples1$Urea)
-merged_seq_samples1$Creatinine = as.numeric(merged_seq_samples1$Creatinine)
-merged_seq_samples1$Total_Bilirubin = as.numeric(merged_seq_samples1$Total_Bilirubin)
-merged_seq_samples1$ALT_SGPT = as.numeric(merged_seq_samples1$ALT_SGPT)
-merged_seq_samples1$AST_SGOT = as.numeric(merged_seq_samples1$AST_SGOT)
-merged_seq_samples1$Alkaline_Phosphatase = as.numeric(merged_seq_samples1$Alkaline_Phosphatase)
-merged_seq_samples1$Cholesterol = as.numeric(merged_seq_samples1$Cholesterol)
-merged_seq_samples1$Triglycerides = as.numeric(merged_seq_samples1$Triglycerides)
-merged_seq_samples1$HDL = as.numeric(merged_seq_samples1$HDL)
-merged_seq_samples1$LDL = as.numeric(merged_seq_samples1$LDL)
-merged_seq_samples1$T3_Total = as.numeric(merged_seq_samples1$T3_Total)
-merged_seq_samples1$T4_Total = as.numeric(merged_seq_samples1$T4_Total)
-merged_seq_samples1$TSH = as.numeric(merged_seq_samples1$TSH)
-merged_seq_samples1$Homocysteine_Levels = as.numeric(merged_seq_samples1$Homocysteine_Levels)
-merged_seq_samples1$Vitamin_B12 = as.numeric(merged_seq_samples1$Vitamin_B12)
-merged_seq_samples1$Folic_Acid = as.numeric(merged_seq_samples1$Folic_Acid)
-merged_seq_samples1$Fasting_Insulin_Level = as.numeric(merged_seq_samples1$Fasting_Insulin_Level)
-merged_seq_samples1$C.Peptide = as.numeric(merged_seq_samples1$C.Peptide)
-merged_seq_samples1$HB_Haemoglobin = as.numeric(merged_seq_samples1$HB_Haemoglobin)
-merged_seq_samples1$RBC_Red_Blood_Cell_Count = as.numeric(merged_seq_samples1$RBC_Red_Blood_Cell_Count) #this is probably in millions
-merged_seq_samples1$MCH_Mean_Corpuscular_Hb = as.numeric(merged_seq_samples1$MCH_Mean_Corpuscular_Hb)
-merged_seq_samples1$MCHC_Mean_Corpuscular_Hb_Concn = as.numeric(merged_seq_samples1$MCHC_Mean_Corpuscular_Hb_Concn)
-merged_seq_samples1$MCV_Mean_Corpuscular_Volume = as.numeric(merged_seq_samples1$MCV_Mean_Corpuscular_Volume)
-merged_seq_samples1$RDW_Red_Cell_Distribution_Width = as.numeric(merged_seq_samples1$RDW_Red_Cell_Distribution_Width)
-merged_seq_samples1$WBC_Total_White_Blood_Cell_Count = as.numeric(merged_seq_samples1$WBC_Total_White_Blood_Cell_Count)
-merged_seq_samples1$Basophils = as.numeric(merged_seq_samples1$Basophils)
-merged_seq_samples1$Eosinophils = as.numeric(merged_seq_samples1$Eosinophils)
-merged_seq_samples1$Lymphocytes = as.numeric(merged_seq_samples1$Lymphocytes)
-merged_seq_samples1$Monocytes = as.numeric(merged_seq_samples1$Monocytes)
-merged_seq_samples1$Neutrophils = as.numeric(merged_seq_samples1$Neutrophils)
-merged_seq_samples1$Platelet_Count = as.numeric(merged_seq_samples1$Platelet_Count)
-merged_seq_samples1$A_G_Ratio_Albumin_Globulin = as.numeric(merged_seq_samples1$A_G_Ratio_Albumin_Globulin)
-merged_seq_samples1$Absolute_Neutrophil_Count = as.numeric(merged_seq_samples1$Absolute_Neutrophil_Count)
-merged_seq_samples1$Absolute_Basophil_Count = as.numeric(merged_seq_samples1$Absolute_Basophil_Count)
-merged_seq_samples1$Absolute_Eosinophil_Count = as.numeric(merged_seq_samples1$Absolute_Eosinophil_Count)
-merged_seq_samples1$Absolute_Lymphocyte_Count = as.numeric(merged_seq_samples1$Absolute_Lymphocyte_Count)
-merged_seq_samples1$Absolute_Monocyte_Count = as.numeric(merged_seq_samples1$Absolute_Monocyte_Count)
-merged_seq_samples1$CHOL_HDL_Ratio = as.numeric(merged_seq_samples1$CHOL_HDL_Ratio)
-merged_seq_samples1$Direct_Bilirubin = as.numeric(merged_seq_samples1$Direct_Bilirubin)
-merged_seq_samples1$ESR = as.numeric(merged_seq_samples1$ESR)
-merged_seq_samples1$Estimated_Average_Glucose = as.numeric(merged_seq_samples1$Estimated_Average_Glucose)
-merged_seq_samples1$Gamma_GT_GGTP = as.numeric(merged_seq_samples1$Gamma_GT_GGTP)
-merged_seq_samples1$Globulin = as.numeric(merged_seq_samples1$Globulin)
-merged_seq_samples1$Indirect_Bilirubin = as.numeric(merged_seq_samples1$Indirect_Bilirubin)
-merged_seq_samples1$LDL_HDL_Ratio = as.numeric(merged_seq_samples1$LDL_HDL_Ratio)
-merged_seq_samples1$Hematocrit = as.numeric(merged_seq_samples1$Hematocrit)
-merged_seq_samples1$Albumin = as.numeric(merged_seq_samples1$Albumin)
-merged_seq_samples1$Protein = as.numeric(merged_seq_samples1$Protein)
-merged_seq_samples1$VLDL = as.numeric(merged_seq_samples1$VLDL)
-merged_seq_samples1$RDW_SD = as.numeric(merged_seq_samples1$RDW_SD)
-merged_seq_samples1$CRP = as.numeric(merged_seq_samples1$CRP)
-merged_seq_samples1$MPV_Mean_Platelet_Volume = as.numeric(merged_seq_samples1$MPV_Mean_Platelet_Volume)
-merged_seq_samples1$Immature_granulocyte_perc = as.numeric(merged_seq_samples1$Immature_granulocyte_perc)
-#merged_seq_samples1$IG_0.0.3 = as.numeric(merged_seq_samples1$IG_0.0.3)
-merged_seq_samples1$PDW = as.numeric(merged_seq_samples1$PDW)
-merged_seq_samples1$PLCR = as.numeric(merged_seq_samples1$PLCR)
-merged_seq_samples1$PCT = as.numeric(merged_seq_samples1$PCT)
-merged_seq_samples1$RBS = as.numeric(merged_seq_samples1$RBS)
-merged_seq_samples1$GLYCOSYLATED_Hb_IFCC = as.numeric(merged_seq_samples1$GLYCOSYLATED_Hb_IFCC)
-merged_seq_samples1$BUN = as.numeric(merged_seq_samples1$BUN)
-merged_seq_samples1$BUN_Sr_creatinine = as.numeric(merged_seq_samples1$BUN_Sr_creatinine)
-merged_seq_samples1$Uric_Acid = as.numeric(merged_seq_samples1$Uric_Acid)
-merged_seq_samples1$Estimated_Glomerular_filtration_rate = as.numeric(merged_seq_samples1$Estimated_Glomerular_filtration_rate)
-merged_seq_samples1$NonHDL_Cholesterol = as.numeric(merged_seq_samples1$NonHDL_Cholesterol)
-merged_seq_samples1$Vitamin_D_25_Hydroxy = as.numeric(merged_seq_samples1$Vitamin_D_25_Hydroxy)
-merged_seq_samples1$Free_T3 = as.numeric(merged_seq_samples1$Free_T3)
-merged_seq_samples1$Free_T4 = as.numeric(merged_seq_samples1$Free_T4)
-merged_seq_samples1$Hs.CRP_High_Sensitivity_CRP = as.numeric(merged_seq_samples1$Hs.CRP_High_Sensitivity_CRP)
-#merged_seq_samples1$Transferrin = as.numeric(merged_seq_samples1$Transferrin)
-merged_seq_samples1$Polymorphs = as.numeric(merged_seq_samples1$Polymorphs)
-merged_seq_samples1$Sodium = as.numeric(merged_seq_samples1$Sodium)
-merged_seq_samples1$Potassium = as.numeric(merged_seq_samples1$Potassium)
-merged_seq_samples1$SerumIronStudy_TIBC_UIBC = as.numeric(merged_seq_samples1$SerumIronStudy_TIBC_UIBC)
-merged_seq_samples1$Transferrin_Saturation = as.numeric(merged_seq_samples1$Transferrin_Saturation)
-merged_seq_samples1$Immature_granulocytes = as.numeric(merged_seq_samples1$Immature_granulocytes)
-merged_seq_samples1$LDH_1 = as.numeric(merged_seq_samples1$LDH_1)
-merged_seq_samples1$Total_Calcium = as.numeric(merged_seq_samples1$Total_Calcium)
-merged_seq_samples1$Serum_Iron = as.numeric(merged_seq_samples1$Serum_Iron)
-merged_seq_samples1$MENTZ1 = as.numeric(merged_seq_samples1$MENTZ1)
-merged_seq_samples1$NLR_4 = as.numeric(merged_seq_samples1$NLR_4)
-merged_seq_samples1$PO4_mg.dl = as.numeric(merged_seq_samples1$PO4_mg.dl)
-merged_seq_samples1$Cl._mEq.L = as.numeric(merged_seq_samples1$Cl._mEq.L)
-merged_seq_samples1$SGOT_SGPT = as.numeric(merged_seq_samples1$SGOT_SGPT)
-merged_seq_samples1$CHOL.LDL_Ratio = as.numeric(merged_seq_samples1$CHOL.LDL_Ratio)
-merged_seq_samples1$APB. = as.numeric(merged_seq_samples1$APB.)
-merged_seq_samples1$APOA = as.numeric(merged_seq_samples1$APOA)
-merged_seq_samples1$APOB = as.numeric(merged_seq_samples1$APOB)
-merged_seq_samples1$LPA = as.numeric(merged_seq_samples1$LPA)
-merged_seq_samples1$anthropometry.head_cir = as.numeric(merged_seq_samples1$anthropometry.head_cir)
-merged_seq_samples1$anthropometry.height = as.numeric(merged_seq_samples1$anthropometry.height)
-merged_seq_samples1$anthropometry.hip_cir = as.numeric(merged_seq_samples1$anthropometry.hip_cir)
-merged_seq_samples1$anthropometry.sys_bp = as.numeric(merged_seq_samples1$anthropometry.sys_bp)
-merged_seq_samples1$anthropometry.dia_bp = as.numeric(merged_seq_samples1$anthropometry.dia_bp)
-merged_seq_samples1$anthropometry.body_fat = as.numeric(merged_seq_samples1$anthropometry.body_fat)
-merged_seq_samples1$anthropometry.waist_cir = as.numeric(merged_seq_samples1$anthropometry.waist_cir)
-merged_seq_samples1$anthropometry.weight = as.numeric(merged_seq_samples1$anthropometry.weight)
-merged_seq_samples1$anthropometry.glucose_mg_dl = as.numeric(merged_seq_samples1$anthropometry.glucose_mg_dl)
-merged_seq_samples1$Granulocytes = as.numeric(merged_seq_samples1$Granulocytes)
-merged_seq_samples1$Granulocyte_count = as.numeric(merged_seq_samples1$Granulocyte_count)
-merged_seq_samples1$MID = as.numeric(merged_seq_samples1$MID)
-merged_seq_samples1$MID_Percent = as.numeric(merged_seq_samples1$MID_Percent)
-merged_seq_samples1$calc_age = as.numeric(merged_seq_samples1$calc_age)
-merged_seq_samples1$calc1 = as.numeric(merged_seq_samples1$calc1)
-merged_seq_samples1$BMI = as.numeric(merged_seq_samples1$BMI)
 
 
-merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status = tolower(merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status)
-merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status = tolower(merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status)
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status = tolower(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status)
-merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status[which(merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status=="na")]=NA
-merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status[which(merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status=="no")]="never"
-merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status[which(merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status=="yes")]="current"
-merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status[which(merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status=="0")]="never"
-merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status[which(merged_seq_samples1$smoking_tobacco_alcohol.alcohol_status=="no")]="never"
-merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status[which(merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status=="")]=NA
-merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status[which(merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status=="yes")]="current"
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status[which(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status=="")]=NA
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status[which(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status=="na")]=NA
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status[which(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status=="0")]="never"
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status[which(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status=="no")]="never"
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status[which(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status=="currently_abstinent")]="past"
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status[which(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status=="currently_using")]="current"
-merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status[which(merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status=="0")]="past"
-merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status[which(merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status=="currently_abstinent")]="past"
-merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status[which(merged_seq_samples1$smoking_tobacco_alcohol.chewing_tobacco_status=="currently_using")]="current"
-merged_seq_samples1$smoking_tobacco_alcohol.smoking_status[which(merged_seq_samples1$smoking_tobacco_alcohol.smoking_status=="yes")]="current"
+# checking earlier version ------------------------------------------------
 
-merged_seq_samples1$socio_demographics.marital_status = tolower(merged_seq_samples1$socio_demographics.marital_status)
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=="")]=NA
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=="currently_currently_married")]='currently_married'
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=="married")]='currently_married'
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=="unmarried")]='never_married'
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=='never_currently_currently_married')] = NA
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=='Un-currently_married')] = "currently_married"
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=='cohabiting')] = "never_married"
-merged_seq_samples1$socio_demographics.marital_status[which(merged_seq_samples1$socio_demographics.marital_status=='0')] = "never_married"
+totrackdownold = read_excel("to track down May 24.xlsx")
 
-# plotting boxplots against centre ----------------------------------------------------------------
 
-merge_num = dplyr::select_if(merged_seq_samples1_cp, is.numeric)
-pdf("distbycenter_new.pdf", width = 11)
-variables = colnames(merge_num)
-for(V in variables){
-  if(length(unique(as.numeric(merge_num[,V]))) == 1){next;}
-  boxplot(as.numeric(merge_num[,V]) ~ merged_seq_samples1$center, main = V, ylab = V, xlab = "Ethnicity")
-}
+# Ethnicity coding --------------------------------------------------------
 
-dev.off()
 
-# plotting boxplots against ethnicity -------------------------------------
-merge_num = dplyr::select_if(merged_seq_samples1_cp, is.numeric)
-pdf("distbyethnicity_new.pdf", width = 11)
-variables = colnames(merge_num)
-for(V in variables){
-  if(length(unique(as.numeric(merge_num[,V]))) == 1){next;}
-  boxplot(as.numeric(merge_num[,V]) ~ merged_seq_samples1$name_dob_1.ethnicity, main = V, las = 2, cex.axis = 0.5, ylab = V, xlab = "Ethnicity")
-}
+# Removing Hakkipikki-Halakki ---------------------------------------------
 
-dev.off()
 
+# Export files (remove Age!) ------------------------------------------------------------
 
-# missingness -------------------------------------------------------------
-
-empty_cols = sort(colSums(is.na(merged_seq_samples1)|merged_seq_samples1==""))
-empty_cols = data.frame(Column = names(empty_cols), missing_values = empty_cols)
-rownames(empty_cols)=NULL
-empty_cols$missing_values_perc = (empty_cols$missing_values/length(merged_seq_samples1$LocalID))*100
-
-empty_cols <- empty_cols %>% mutate(across(c('missing_values_perc'), round, 2))
-
-
-
-# Removing cols with less than 5% values ----------------------------------
-
-#merged_seq_samples1_95 = merged_seq_samples1
-missing_percent <- colMeans(is.na(merged_seq_samples1)) * 100
-
-# Select columns with less than 5% missing values
-columns_to_keep <- names(missing_percent[missing_percent < 95])
-
-# Create the new dataframe with the selected columns
-merged_seq_samples1_95 <- merged_seq_samples1[, columns_to_keep]
-
-merge_num_95 = dplyr::select_if(merged_seq_samples1_95, is.numeric)
-
-
-# pairwise corrplots ------------------------------------------------------
-
-library(ggplot2)
-library(dplyr)
-library(rlang)
-
-# Start the PDF device
-pdf("all_scatter_plots.pdf", width = 10, height = 10)
-
-for (i in 1:(ncol(merge_num))) { 
-  for (j in 1:(ncol(merge_num))) {
-    if (i != j) {  # Avoid plotting a variable against itself
-      # Check for enough complete observations
-      if (sum(complete.cases(merge_num[, c(i, j)])) >= 3) {
-        # Print the variable names on screen
-        cat("Plotting:", names(merge_num)[i], "vs", names(merge_num)[j], "\n")
-        
-        # Calculate correlation coefficient
-        correlation <- cor.test(merge_num[,i], merge_num[,j], method = "spearman")$estimate
-        
-        # Create the plot
-        p <- ggplot(merge_num, aes_string(x = names(merge_num)[i], y = names(merge_num)[j])) +
-          geom_point(aes(color = factor(merged_seq_samples1$center))) +
-          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
-                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
-                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
-                                        "#000075")) +
-          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
-          labs(title = paste(names(merge_num)[i], "vs", names(merge_num)[j]))
-        
-        # Print the plot
-        print(p)
-      } else {
-        warning("Not enough complete observations to calculate correlation for variables ", 
-                names(merge_num)[i], " and ", names(merge_num)[j])
-      }
-      
-    }
-  }
-}
-
-# Close the PDF device
-dev.off()
-
-# for <95% missing --------------------------------------------------------
-
-
-library(ggplot2)
-library(dplyr)
-library(rlang)
-
-# Start the PDF device
-pdf("all_scatter_plots_95.pdf", width = 10, height = 10)
-
-for (i in 1:(ncol(merge_num_95))) { 
-  for (j in 1:(ncol(merge_num_95))) {
-    if (i != j) {  # Avoid plotting a variable against itself
-      # Check for enough complete observations
-      if (sum(complete.cases(merge_num_95[, c(i, j)])) >= 3) {
-        # Print the variable names on screen
-        cat("Plotting:", names(merge_num_95)[i], "vs", names(merge_num_95)[j], "\n")
-        
-        # Calculate correlation coefficient
-        correlation <- cor.test(merge_num_95[,i], merge_num_95[,j], method = "spearman")$estimate
-        
-        # Create the plot
-        p <- ggplot(merge_num_95, aes_string(x = names(merge_num_95)[i], y = names(merge_num_95)[j])) +
-          geom_point(aes(color = factor(merged_seq_samples1$center))) +
-          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
-                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
-                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
-                                        "#000075")) +
-          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
-          labs(title = paste(names(merge_num_95)[i], "vs", names(merge_num_95)[j]))+theme_bw()
-        
-        # Print the plot
-        print(p)
-      } else {
-        warning("Not enough complete observations to calculate correlation for variables ", 
-                names(merge_num_95)[i], " and ", names(merge_num_95)[j])
-      }
-      
-    }
-  }
-}
-
-# Close the PDF device
-dev.off()
-
-
-# Histograms --------------------------------------------------------------
-
-pdf("distbyvariable_hist.pdf", width = 11)
-variables = colnames(merge_num)
-for(V in variables){
-  if(length(unique(as.numeric(merge_num[,V]))) == 1){next;}
-  hist(as.numeric(merge_num[,V]), breaks = 100, main = V)
-}
-
-dev.off()
-
-pdf("distbyvariable_hist_01.pdf", width = 11)
-for (i in 1:ncol(merged_seq_samples)) {
-  if (is.numeric(merged_seq_samples[, i])) {
-    hist(merged_seq_samples[, i], nclass = 50, xlab = "",
-         main = paste0(names(merged_seq_samples[i]), " (",
-                       round(mean(is.na(merged_seq_samples[, i])) * 100, 2), "% NA)")
-    )
-  } else {
-    barplot(table(merged_seq_samples[, i]), ylab = "Frequency",
-            main = paste0(names(merged_seq_samples[i]), " (",
-                          round(mean(is.na(merged_seq_samples[, i])) * 100, 2), "% NA)"))
-  }
-}
-
-dev.off()
-
-# Obvious outlier removal on sequenced samples ----------------------------
-
-merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin[merged_seq_samples1$HbA1C_Glycosylated_Haemoglobin==0] = NA
-merged_seq_samples1$Hematocrit[merged_seq_samples1$Hematocrit==0] = NA
-merged_seq_samples1$PDW[merged_seq_samples1$PDW==0] = NA
-merged_seq_samples1$Vitamin_B12[merged_seq_samples1$Vitamin_B12==0] = NA
-merged_seq_samples1$T3_Total[merged_seq_samples1$T3_Total==0] = NA
-merged_seq_samples1$Homocysteine_Levels[merged_seq_samples1$Homocysteine_Levels<0] = NA
-merged_seq_samples1$C.Peptide[merged_seq_samples1$C.Peptide<0] = NA
-merged_seq_samples1$Fasting_Insulin_Level[merged_seq_samples1$Fasting_Insulin_Level<0] = NA
-merged_seq_samples1$Lymphocytes[merged_seq_samples1$Lymphocytes==0] = NA
-merged_seq_samples1$AST_SGOT[merged_seq_samples1$AST_SGOT>500] = NA
-merged_seq_samples1$socio_demographics.marital_status[merged_seq_samples1$socio_demographics.marital_status=="currently_currently_married"] = "currently_married"
-merged_seq_samples1$socio_demographics.marital_status[merged_seq_samples1$socio_demographics.marital_status=="Married"] = "currently_married"
-merged_seq_samples1$socio_demographics.marital_status[merged_seq_samples1$socio_demographics.marital_status=="MARRIED"] = "currently_married"
-merged_seq_samples1$socio_demographics.marital_status[merged_seq_samples1$socio_demographics.marital_status=="Unmarried"] = "never_married"
-merged_seq_samples1$socio_demographics.marital_status[merged_seq_samples1$socio_demographics.marital_status=="Widowed"] = "widowed"
-merged_seq_samples1$Indirect_Bilirubin[merged_seq_samples1$Indirect_Bilirubin<=0] = NA
-merged_seq_samples1$Indirect_Bilirubin[merged_seq_samples1$Indirect_Bilirubin >10] = NA
-
-merged_seq_samples1$name_dob_1.mother_tongue = tolower(merged_seq_samples1$name_dob_1.mother_tongue)
-
-merged_seq_samples1$name_dob_1.mother_tongue = trimws(tolower(merged_seq_samples1$name_dob_1.mother_tongue))
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="bangala namasudra"] = "bengali"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hi hindi"] = "hindi"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindhi"] = "hindi"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindi movie"] = "hindi"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindi to"] = "hindi"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="baiga language"] = "baiga"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="dogri w"] = "dogri"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gujarati v"] = "gujarati"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gujrati"] = "gujarati"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindi  maithili"] = "hindi maithili"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="kashmirir"] = "kashmiri"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="marw"] = "marwari"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gurhwali"] = "garhwali"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gharwale"] = "garhwali"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="ghrwale"] = "garhwali"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="marwari and hindi"] = "hindi and marwari"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="odiia"] = "odia"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="santali"] = "santhali"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="santhal"] = "santhali"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="sathali"] = "santhali"
-merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="sauthali"] = "santhali"
-
-# IGIB replaced some values -----------------------------------------------
-IGIB_headcirc = read_xlsx("igib_headcirc_corrected.xlsx")
-merged_seq_samples1$anthropometry.head_cir[merged_seq_samples1$LocalID %in% IGIB_headcirc$LocalID] <- IGIB_headcirc$anthropometry.head_cir[match(merged_seq_samples1$LocalID[merged_seq_samples1$LocalID %in% IGIB_headcirc$LocalID], IGIB_headcirc$LocalID)]
-
-IGIB_TSH = read_xlsx("IGIB_TSH.xlsx")
-merged_seq_samples1$TSH[merged_seq_samples1$LocalID %in% IGIB_TSH$LocalID] <- IGIB_TSH$TSH[match(merged_seq_samples1$LocalID[merged_seq_samples1$LocalID %in% IGIB_TSH$LocalID], IGIB_TSH$LocalID)]
-
-IGIB_Chloride = read_xlsx("IGIB_chloride.xlsx")
-merged_seq_samples1$Cl._mEq.L[merged_seq_samples1$LocalID %in% IGIB_Chloride$LocalID] <- IGIB_Chloride$Chloride[match(merged_seq_samples1$LocalID[merged_seq_samples1$LocalID %in% IGIB_Chloride$LocalID], IGIB_Chloride$LocalID)]
-
-#go to missingness and run the empty_cols after this, not before
-# add labels as BBC or ODK ------------------------------------------------
-
-empty_cols$label = NA
-empty_cols$label[empty_cols$Column %in% colnames(odk_main)] = "ODK"
-empty_cols$label[empty_cols$Column == "anthropometry.waist_cir"] = "ODK"
-empty_cols$label[empty_cols$Column == "region"] = "meta"
-empty_cols$label[empty_cols$Column == "center"] = "ODK"
-empty_cols$label[empty_cols$Column == "BMI"] = "ODK"
-empty_cols$label[empty_cols$Column == "calc_age"] = "ODK"
-empty_cols$label[empty_cols$Column == "calc1"] = "ODK"
-empty_cols$label[empty_cols$Column == "LocalID"] = "Key"
-empty_cols$label[empty_cols$Column == "SeqID"] = "Key"
-empty_cols$label[!(empty_cols$label %in% c("Key", "ODK", "meta"))] = "BBC"
-
-# missingness% ------------------------------------------------------------
-
-# Assuming empty_cols is your dataframe with columns: Column and missing_values_perc
-
-# Add a new column for color based on the condition
-empty_cols$color <- ifelse(empty_cols$missing_values_perc < 20, "green", "black")
-
-# Create the plot with conditional coloring
-ggplot(empty_cols) +
-  geom_point(aes(x = reorder(Column, missing_values_perc), y = missing_values_perc, color = color)) +
-  labs(x = 'Column', y = 'Missingness percentage') +
-  theme_bw() + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust = 1)) +
-  scale_color_identity()  # Use scale_color_identity() to ensure the colors are taken directly from the data
-
-
-# Putting values back in ft -----------------------------------------------
-
-
-
-
-# write to file -----------------------------------------------------------
-
-
-merged_seq_samples1_cp = merged_seq_samples1
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="hakkipikki"] = "K1"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="halakki"] = "K2"
-
-odk_variables = empty_cols[empty_cols$label %in% c("Key","ODK","meta"),]
-odk_variables = subset(odk_variables, select = Column)
-odk_variables = as.list(odk_variables)
-merged_seq_samples1_01 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% odk_variables$Column]
-
-BBC_variables = empty_cols[empty_cols$label %in% c("BBC"),]
-BBC_variables = BBC_variables[1:25,]
-BBC_variables = as.list(subset(BBC_variables, select = Column))
-BBC_variables_to_add = c("RBS", "FBS_Fasting_Blood_Glucose")
-BBC_variables$Column = append(BBC_variables$Column, BBC_variables_to_add)
-merged_seq_samples1_02 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% BBC_variables$Column]
-
-merged_seq_samples_joined = cbind(merged_seq_samples1_01, merged_seq_samples1_02)
-
-
-
-# replacing gender with sequencing metadata ---------------------------------------
-merged_seq_samples_joined$genetic_sex[merged_seq_samples_joined$LocalID %in% seq_samples$LocalID] <- seq_samples$gender[match(merged_seq_samples_joined$LocalID[merged_seq_samples_joined$LocalID %in% seq_samples$LocalID], seq_samples$LocalID)]
-merged_seq_samples_joined$genetic_sex[merged_seq_samples_joined$genetic_sex=="xx"] = "female"
-merged_seq_samples_joined$genetic_sex[merged_seq_samples_joined$genetic_sex=="xy"] = "male"
-
-merged_seq_samples_joined$name_dob_1.gender = tolower(merged_seq_samples_joined$name_dob_1.gender)
-merged_seq_samples_joined = subset(merged_seq_samples_joined, select = -name_dob_1.gender)
-
-# replacing ethnicity with listed ethnicities -----------------------------
-
-seq_samples1 = read.table("IDMappings_8964.csv", sep = ",", header = T, encoding = 'latin1')
-seq_samples1$LocalID <- sub("^AIIMS/", "AIIM/", seq_samples1$LocalID)
-
-seq_samples1$centre = gsub("\\/.*","", seq_samples1$LocalID)
-seq_samples1$ethnicity = tolower(seq_samples1$ethnicity)
-
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="adi_karnataka"] = "adikarnataka"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="agrawal"] = "aggarwal"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="ansari"] = "ansari_sunni"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="desastha_brahmin"] = "deshastha_brahmin"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="gujjar_and_bakarwal"] = "gujjar_and_bakkarwal"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="iyangar"] = "iyengar"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="jat"] = "jats"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="kannet"] = "kannets"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="khatri"] = "khatri_pb"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="koli"] = "kolis"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="kokanastha_brahmin"] = "konkonastha_brahmin"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="kurmi_mahato"] = "kudmi_mahato"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="kuruma"] = "kuruman"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="lingayats"] = "lingayath"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="maithil_brahmin"] = "maithili_brahmin"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="maratha"] = "marathas"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="rajbanshi"] = "rajbangshi"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="nambudri_brahmin"] = "namboodari"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="sahariya"] = "saharia"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="sikh"] = "sikhs"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="tiya"] = "thiya"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$name_dob_1.ethnicity=="vakaliga"] = "vakkaliga"
-
-kol_localids = seq_samples1$LocalID[seq_samples1$ethnicity=="kol"]
-
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$LocalID %in% kol_localids] = "kol"
-merged_seq_samples_joined$name_dob_1.ethnicity[merged_seq_samples_joined$LocalID %in% kol_localids] = "koli (tribe)"
-
-
-merged_seq_samples_joined_cp = merged_seq_samples_joined
-merged_seq_samples_joined_cp <- subset(merged_seq_samples_joined_cp, name_dob_1.ethnicity != "K1")
-merged_seq_samples_joined_cp <- subset(merged_seq_samples_joined_cp, name_dob_1.ethnicity != "K2")
-
-
-write.table(merged_seq_samples_joined_cp, "SequencedSamples_top25_Jul3.txt", sep = '\t', row.names = F)
-
-merge_num_top25 = dplyr::select_if(merged_seq_samples_joined_cp, is.numeric)
-
-pdf("distbycenter_top25.pdf", width = 11)
-variables = colnames(merge_num_top25)
-for(V in variables){
-  if(length(unique(as.numeric(merge_num_top25[,V]))) == 1){next;}
-  boxplot(as.numeric(merge_num_top25[,V]) ~ merged_seq_samples_joined_cp$center, main = V, ylab = V, xlab = "Ethnicity")
-}
-
-dev.off()
-
-# plotting boxplots against ethnicity -------------------------------------
-pdf("distbyethnicity_top25.pdf", width = 11)
-variables = colnames(merge_num_top25)
-for(V in variables){
-  if(length(unique(as.numeric(merge_num_top25[,V]))) == 1){next;}
-  boxplot(as.numeric(merge_num_top25[,V]) ~ merged_seq_samples_joined_cp$name_dob_1.ethnicity, main = V, las = 2, cex.axis = 0.5, ylab = V, xlab = "Ethnicity")
-}
-
-dev.off()
-
-
-# merged_seq_samples_joined_cp = merged_seq_samples_joined
-# merged_seq_samples_joined_cp = merged_seq_samples_joined_cp[, names(merged_seq_samples_joined_cp) %in% c("AST_SGOT","ALT_SGPT","Cholesterol","Creatinine","Triglycerides","HDL","Alkaline_Phosphatase","LDL","Lymphocytes","WBC_Total_White_Blood_Cell_Count","HB_Haemoglobin","RBC_Red_Blood_Cell_Count","Eosinophils","Total_Bilirubin","Monocytes","Neutrophils","Urea","Basophils","Platelet_Count","Direct_Bilirubin","HbA1C_Glycosylated_Haemoglobin","MCH_Mean_Corpuscular_Hb","Indirect_Bilirubin","Albumin","Protein", "center")]
-
-library(naniar)
-gg_miss_fct(x = merged_seq_samples_joined_cp1, fct = center)+scale_fill_gradientn(colors = c("navy","gold", "white"))
-
-empty_cols = sort(colSums(is.na(merged_seq_samples_joined)|merged_seq_samples_joined==""))
-empty_cols = data.frame(Column = names(empty_cols), missing_values = empty_cols)
-rownames(empty_cols)=NULL
-empty_cols$missing_values_perc = (empty_cols$missing_values/length(merged_seq_samples_joined$LocalID))*100
-
-empty_cols <- empty_cols %>% mutate(across(c('missing_values_perc'), round, 2))
-
-
-write.table(merged_seq_samples1_cp, "SequencedSamples_Jun5.txt", sep = '\t', row.names = F)
-
-library(ggplot2)
-library(dplyr)
-library(rlang)
-
-# Start the PDF device
-pdf("allscatterplots_top25.pdf", width = 10, height = 10)
-
-for (i in 1:(ncol(merge_num_top25))) { 
-  for (j in 1:(ncol(merge_num_top25))) {
-    if (i != j) {  # Avoid plotting a variable against itself
-      # Check for enough complete observations
-      if (sum(complete.cases(merge_num_top25[, c(i, j)])) >= 3) {
-        # Print the variable names on screen
-        cat("Plotting:", names(merge_num_top25)[i], "vs", names(merge_num_top25)[j], "\n")
-        
-        # Calculate correlation coefficient
-        correlation <- cor.test(merge_num_top25[,i], merge_num_top25[,j], method = "spearman")$estimate
-        
-        # Create the plot
-        p <- ggplot(merge_num_top25, aes_string(x = names(merge_num_top25)[i], y = names(merge_num_top25)[j])) +
-          geom_point(aes(color = factor(merged_seq_samples_joined_cp$center))) +
-          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
-                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
-                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
-                                        "#000075")) +
-          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
-          labs(title = paste(names(merge_num_top25)[i], "vs", names(merge_num_top25)[j]))+theme_bw()
-        
-        # Print the plot
-        print(p)
-      } else {
-        warning("Not enough complete observations to calculate correlation for variables ", 
-                names(merge_num_top25)[i], " and ", names(merge_num_top25)[j])
-      }
-      
-    }
-  }
-}
-
-# Close the PDF device
-dev.off()
-
-# corrplot ----------------------------------------------------------------
-library(corrplot)
-corrplot(cor(merged_seq_samples1 %>% 
-               filter(center == "SKIM") %>% 
-               select_if(is.numeric), 
-             use = 'pairwise.complete.obs'), method = 'circle', shade.col=NA, tl.col="black", na.label = NA)
-
-
-# testing if file is read correctly ---------------------------------------
-
-# ID_state = subset(merged_seq_samples_joined, select = c("SeqID", "name_dob_1.state"))
-# write.table(ID_state, "ID_State.txt", sep = "\t", row.names = F)
-
-
-# changing merged_seq_samples1_cp -----------------------------------------
-
-merged_seq_samples1_cp$genetic_sex[merged_seq_samples1_cp$LocalID %in% seq_samples$LocalID] <- seq_samples$gender[match(merged_seq_samples1_cp$LocalID[merged_seq_samples1_cp$LocalID %in% seq_samples$LocalID], seq_samples$LocalID)]
-merged_seq_samples1_cp$genetic_sex[merged_seq_samples1_cp$genetic_sex=="xx"] = "female"
-merged_seq_samples1_cp$genetic_sex[merged_seq_samples1_cp$genetic_sex=="xy"] = "male"
-
-merged_seq_samples1_cp$name_dob_1.gender = tolower(merged_seq_samples1_cp$name_dob_1.gender)
-merged_seq_samples1_cp = subset(merged_seq_samples1_cp, select = -genetic_sex)
-
-# replacing ethnicity with listed ethnicities -----------------------------
-
-seq_samples1 = read.table("IDMappings_8964.csv", sep = ",", header = T, encoding = 'latin1')
-seq_samples1$LocalID <- sub("^AIIMS/", "AIIM/", seq_samples1$LocalID)
-
-seq_samples1$centre = gsub("\\/.*","", seq_samples1$LocalID)
-seq_samples1$ethnicity = tolower(seq_samples1$ethnicity)
-
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="adi_karnataka"] = "adikarnataka"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="agrawal"] = "aggarwal"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="ansari"] = "ansari_sunni"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="desastha_brahmin"] = "deshastha_brahmin"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="gujjar_and_bakarwal"] = "gujjar_and_bakkarwal"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="iyangar"] = "iyengar"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="jat"] = "jats"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="kannet"] = "kannets"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="khatri"] = "khatri_pb"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="koli"] = "kolis"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="kokanastha_brahmin"] = "konkonastha_brahmin"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="kurmi_mahato"] = "kudmi_mahato"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="kuruma"] = "kuruman"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="lingayats"] = "lingayath"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="maithil_brahmin"] = "maithili_brahmin"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="maratha"] = "marathas"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="rajbanshi"] = "rajbangshi"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="nambudri_brahmin"] = "namboodari"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="sahariya"] = "saharia"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="sikh"] = "sikhs"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="tiya"] = "thiya"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$name_dob_1.ethnicity=="vakaliga"] = "vakkaliga"
-
-kol_localids = seq_samples1$LocalID[seq_samples1$ethnicity=="kol"]
-
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$LocalID %in% kol_localids] = "kol"
-merged_seq_samples1_cp$name_dob_1.ethnicity[merged_seq_samples1_cp$LocalID %in% kol_localids] = "koli (tribe)"
 
 
 # putting values back in ft -----------------------------------------------
 
-merged_seq_samples1_cp_cp = merged_seq_samples1_cp
-merged_seq_samples1_cp_cp = subset(merged_seq_samples1_cp_cp, select = -BMI)
+merged_seq_samples1_cp_cp = merged_seq_samples1
+#merged_seq_samples1_cp_cp = subset(merged_seq_samples1_cp_cp, select = -BMI)
 merged_seq_samples1_cp_cp = subset(merged_seq_samples1_cp_cp, select = -SeqID)
 #merged_seq_samples1_cp_cp$name_dob_1.gender = merged_seq_samples1_cp_cp$g
 new_cols = setdiff(colnames(ft), colnames(merged_seq_samples1_cp_cp))
@@ -5037,18 +3718,16 @@ seq_joined<-seq_joined[names(ft)]
 
 
 ft_cp = ft
-ft_cp = ft_cp[ -which(ft_cp$LocalID %in% seq_joined$LocalID),]
+ft_cp = ft_cp[ -which(ft_cp$LocalID %in% seq_samples$LocalID),]
 
 newdups = ft_cp[duplicated(ft_cp$LocalID)|duplicated(ft_cp$LocalID, fromLast = T),]
 #df[duplicated(df$a)|duplicated(df$a, fromLast=TRUE),]
-#write.table(newdups, "New Duplicates_20000_Jun4.txt", sep = '\t', row.names = F)
+#write.table(newdups, "New Duplicates_20000_Jul15.txt", sep = '\t', row.names = F)
 
 ft_cp = ft_cp[!(ft_cp$LocalID %in% newdups$LocalID),]
 
 ft_cp = rbind(ft_cp, seq_joined)
 ft_cp = subset(ft_cp, select = -Age)
-ft_cp$Transferrin_Saturation = ifelse(is.na(ft_cp$Transferrin_Saturation), ft_cp$Transferrin, ft_cp$Transferrin_Saturation)
-ft_cp = subset(ft_cp, select = -Transferrin)
 
 ft_cp$FBS_Fasting_Blood_Glucose = as.numeric(ft_cp$FBS_Fasting_Blood_Glucose)
 ft_cp$HbA1C_Glycosylated_Haemoglobin = as.numeric(ft_cp$HbA1C_Glycosylated_Haemoglobin)
@@ -5155,79 +3834,13 @@ ft_cp$Granulocytes = as.numeric(ft_cp$Granulocytes)
 ft_cp$Granulocyte_count = as.numeric(ft_cp$Granulocyte_count)
 ft_cp$MID = as.numeric(ft_cp$MID)
 ft_cp$MID_Percent = as.numeric(ft_cp$MID_Percent)
-ft_cp$calc_age = as.numeric(ft_cp$calc_age)
-ft_cp$calc1 = as.numeric(ft_cp$calc1)
+ft_cp$age = as.numeric(ft_cp$age)
+ft_cp$age_withBBC = as.numeric(ft_cp$age_withBBC)
 
-ft_cp$name_dob_1.ethnicity <- sub("[ /]", "_", ft_cp$name_dob_1.ethnicity)
-
-
-#ft_cp = ft_cp[-which(ft_cp$LocalID=="SKIM/M/000356"),] #ODK missing
-#ft_cp = ft_cp[-which(ft_cp$LocalID=="SKIM/M/000532"),] #ODK missing
-ft_cp = ft_cp[-which(ft_cp$LocalID=="NIBG/K/507113"),] # BBC missing
-ft_cp = ft_cp[-which(ft_cp$LocalID=="CBRI/B/040009"),] # PD sample
-
-#Remove SKIM/M/ 000532 - ODK datamissing
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="adi_karnataka"] = "adikarnataka"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="agrawal"] = "aggarwal"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="ansari"] = "ansari_sunni"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="desastha_brahmin"] = "deshastha_brahmin"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="bison_horn maria"] = "bison_horn_maria"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="gujjar_and bakarwal"] = "gujjar_and_bakkarwal"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="gujjar_and_bakarwal"] = "gujjar_and_bakkarwal"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="iyangar"] = "iyengar"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="jat"] = "jats"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kannet"] = "kannets"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="khatri"] = "khatri_pb"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="koli"] = "kolis"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kokanastha_brahmin"] = "konkonastha_brahmin"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kurmi_mahato"] = "kudmi_mahato"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kuruma"] = "kuruman"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="lingayats"] = "lingayath"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="maithil_brahmin"] = "maithili_brahmin"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="maratha"] = "marathas"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="rajbanshi"] = "rajbangshi"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="nambudri_brahmin"] = "namboodari"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="sahariya"] = "saharia"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="sikh"] = "sikhs"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="tiya"] = "thiya"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="vakaliga"] = "vakkaliga"
-
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="hakkipikki"] = "K1"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="halakki"] = "K2"
-
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="koli_(tribe)"] = "koli (tribe)"
-
-ft_cp$name_dob_1.ethnicity[ft_cp$LocalID=="CCMB/C/070059"] = "padayachi"
 
 ft_cp$smoking_tobacco_alcohol.alcohol_status = tolower(ft_cp$smoking_tobacco_alcohol.alcohol_status)
 ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status = tolower(ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status)
 ft_cp$smoking_tobacco_alcohol.smoking_status = tolower(ft_cp$smoking_tobacco_alcohol.smoking_status)
-
-ft_cp$smoking_tobacco_alcohol.alcohol_status[which(ft_cp$smoking_tobacco_alcohol.alcohol_status=="na")]=NA
-ft_cp$smoking_tobacco_alcohol.alcohol_status[which(ft_cp$smoking_tobacco_alcohol.alcohol_status=="yes")]="current"
-#ft_cp$smoking_tobacco_alcohol.alcohol_status[which(ft_cp$smoking_tobacco_alcohol.alcohol_status=="0")]="never"
-ft_cp$smoking_tobacco_alcohol.alcohol_status[which(ft_cp$smoking_tobacco_alcohol.alcohol_status=="no")]="never"
-#ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status=="")]=NA
-#ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status=="yes")]="current"
-ft_cp$smoking_tobacco_alcohol.smoking_status[which(ft_cp$smoking_tobacco_alcohol.smoking_status=="")]=NA
-ft_cp$smoking_tobacco_alcohol.smoking_status[which(ft_cp$smoking_tobacco_alcohol.smoking_status=="no")]="never"
-ft_cp$smoking_tobacco_alcohol.smoking_status[which(ft_cp$smoking_tobacco_alcohol.smoking_status=="currently_abstinent")]="past"
-ft_cp$smoking_tobacco_alcohol.smoking_status[which(ft_cp$smoking_tobacco_alcohol.smoking_status=="currently_using")]="current"
-ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status=="0")]="past"
-ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status=="currently_abstinent")]="past"
-ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status[which(ft_cp$smoking_tobacco_alcohol.chewing_tobacco_status=="currently_using")]="current"
-ft_cp$smoking_tobacco_alcohol.smoking_status[which(ft_cp$smoking_tobacco_alcohol.smoking_status=="yes")]="current"
-
-ft_cp$socio_demographics.marital_status = tolower(ft_cp$socio_demographics.marital_status)
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=="")]=NA
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=="currently_currently_married")]='currently_married'
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=="married")]='currently_married'
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=="unmarried")]='never_married'
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=='never_currently_currently_married')] = NA
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=='Un-currently_married')] = "currently_married"
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=='cohabiting')] = "never_married"
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=='0')] = "never_married"
-ft_cp$socio_demographics.marital_status[which(ft_cp$socio_demographics.marital_status=='divorced')] = "divorced_separated"
 
 ft_cp$name_dob_1.gender = tolower(ft_cp$name_dob_1.gender)
 # missingness -------------------------------------------------------------
@@ -5240,64 +3853,16 @@ empty_cols_20k$missing_values_perc = (empty_cols_20k$missing_values/length(ft_cp
 empty_cols_20k <- empty_cols_20k %>% mutate(across(c('missing_values_perc'), round, 2))
 
 
-# other missingness stats -------------------------------------------------
-
-columns_of_interest = c("AST_SGOT", "ALT_SGPT", "Creatinine", "Cholesterol", "Triglycerides", "Alkaline_Phosphatase", 
-                        "HDL", "LDL", "WBC_Total_White_Blood_Cell_Count", "Lymphocytes", "HB_Haemoglobin", 
-                        "Total_Bilirubin", "Urea", "RBC_Red_Blood_Cell_Count", "Eosinophils", 
-                        "Monocytes","Neutrophils", "Basophils", "Platelet_Count","Direct_Bilirubin",
-                        "center", "name_dob_1.ethnicity", "name_dob_1.gender")
-
-subset1 = ft_cp[columns_of_interest]
-library(naniar)
-gg_miss_fct(x = subset1, fct = center)+scale_fill_gradientn(colors = c("navy","gold", "white"))
-
-
-# trying to fill in missing ethnicities -----------------------------------
-
-CBRsamples = read_xlsx("GWAS and WGS updates _to be refered (1).xlsx", sheet = 1)
-colnames(CBRsamples)[colnames(CBRsamples) == "Local IDs"] = "LocalID"
-colnames(CBRsamples)[colnames(CBRsamples) == "Ethnic group"] = "Ethnicity"
-
-ft_cp$name_dob_1.ethnicity[ft_cp$LocalID %in% CBRsamples$LocalID] <- 
-  CBRsamples$Ethnicity[match(ft_cp$LocalID[ft_cp$LocalID %in% CBRsamples$LocalID], 
-                                     CBRsamples$LocalID)]
-
-ft_cp$name_dob_1.ethnicity = tolower(ft_cp$name_dob_1.ethnicity)
-ft_cp$name_dob_1.ethnicity = gsub("(sanscago)", "", ft_cp$name_dob_1.ethnicity)
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="adikarnataka ()"] = "adikarnataka"
-ft_cp$name_dob_1.ethnicity <- sub("vakkaliga.*", "vakkaliga", ft_cp$name_dob_1.ethnicity)
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="hassan iyengar"] = "iyengar"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="hebbar iyengar"] = "iyengar"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="mysore iyengar"] = "iyengar"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="iyengar (from 67 samples)"] = "iyengar"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="k1"] = "K1"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="k2"] = "K2"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="saryuparin brahmin"] = "saryuparin_brahmin"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="vaidiki brahmin"] = "vaidiki_brahmin"
-
-skims_df1 = read.table("SKIMS_final.csv", sep = ",", header = T, fill = T)
-skims_df1[skims_df1==""] = NA
-skims_df1 = skims_df1[-which(is.na(skims_df1$Barcode)),]
-
-ft_cp$name_dob_1.ethnicity[ft_cp$LocalID %in% skims_df1$Barcode & is.na(ft_cp$name_dob_1.ethnicity)] <- 
-  skims_df1$Ethnic[match(ft_cp$LocalID[ft_cp$LocalID %in% skims_df1$Barcode & is.na(ft_cp$name_dob_1.ethnicity)], 
-                             skims_df1$Barcode)]
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="KM"] = "kashmiri_muslim"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="KP"] = "kashmiri_pandit"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="Baltis"] = "balti"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="Dogras"] = "dogra"
-ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="G&B"] = "gujjar_and_bakkarwal"
-
-ft_cp$name_dob_1.ethnicity[ft_cp$LocalID=="IISR/G/000241"] = "deshastha_brahmin"
-ft_cp$name_dob_1.ethnicity[ft_cp$LocalID=="IISR/G/001517"] = "kolis"
-
-
 # adding resolved dups ----------------------------------------------------
 
 resolved_dups = read_xlsx("resolveddups_20000.xlsx")
-resolved_dups = subset(resolved_dups, select = -Age)
+#resolved_dups = subset(resolved_dups, select = -Age)
 resolved_dups = subset(resolved_dups, select = -Transferrin)
+resolved_dups$anthropometry.height = as.numeric(resolved_dups$anthropometry.height)
+resolved_dups$anthropometry.weight = as.numeric(resolved_dups$anthropometry.weight)
+resolved_dups$BMI = resolved_dups$anthropometry.weight/((resolved_dups$anthropometry.height/100)^2)
+
+resolved_dups<-resolved_dups[names(ft_cp)]
 
 ft_cp = rbind(ft_cp, resolved_dups)
 
@@ -5313,6 +3878,7 @@ ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kuruma"] = "kuruman"
 ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kurmi mahato"] = "kudmi_mahato"
 ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="bhil meena"] = "bhil_meena"
 ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="agrawal"] = "aggarwal"
+
 # Tracking missing samples ------------------------------------------------
 
 list_of_samples = read_xlsx("Genome India BB data after duplication check.xlsx")
@@ -5326,575 +3892,26 @@ missingids$ODKmissingstatus[missingids$LocalID %in% odk_main$introduction_1.loca
 
 write.table(missingids, "Missing_samples_20k_ODKmissing.txt", row.names = F)
 
-
-# ILSB missing samples ----------------------------------------------------
-
-ILSB_biochemdata = read_excel("biochem analysis GI.xlsx", col_names = T, skip = 1)
-# <95% missingness --------------------------------------------------------
-
-missing_percent <- colMeans(is.na(ft_cp)) * 100
-
-# Select columns with less than 5% missing values
-columns_to_keep <- names(missing_percent[missing_percent < 95])
-
-# Create the new dataframe with the selected columns
-ft_cp_95 <- ft_cp[, columns_to_keep]
-
-merge_num_95 = dplyr::select_if(ft_cp_95, is.numeric)
-
-# scatterplot -------------------------------------------------------------
-library(ggplot2)
-library(dplyr)
-library(rlang)
-
-# Start the PDF device
-pdf("all_scatter_plots_95_20000.pdf", width = 10, height = 10)
-
-for (i in 1:(ncol(merge_num_95))) { 
-  for (j in 1:(ncol(merge_num_95))) {
-    if (i != j) {  # Avoid plotting a variable against itself
-      # Check for enough complete observations
-      if (sum(complete.cases(merge_num_95[, c(i, j)])) >= 3) {
-        # Print the variable names on screen
-        cat("Plotting:", names(merge_num_95)[i], "vs", names(merge_num_95)[j], "\n")
-        
-        # Calculate correlation coefficient
-        correlation <- cor.test(merge_num_95[,i], merge_num_95[,j], method = "spearman")$estimate
-        
-        # Create the plot
-        p <- ggplot(merge_num_95, aes_string(x = names(merge_num_95)[i], y = names(merge_num_95)[j])) +
-          geom_point(aes(color = factor(ft_cp$center))) +
-          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
-                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
-                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
-                                        "#000075")) +
-          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
-          labs(title = paste(names(merge_num_95)[i], "vs", names(merge_num_95)[j]))+theme_bw()
-        
-        # Print the plot
-        print(p)
-      } else {
-        warning("Not enough complete observations to calculate correlation for variables ", 
-                names(merge_num_95)[i], " and ", names(merge_num_95)[j])
-      }
-      
-    }
-  }
-}
-
-# Close the PDF device
-dev.off()
-
-# dataviz on 20000 --------------------------------------------------------
-
-ggplot(ft_cp, aes(x = name_dob_1.ethnicity, y = as.numeric(calc_age),fill = region))+geom_boxplot()+
-  theme_bw()+theme(axis.text.x = element_text(angle = 90, vjust = 1,hjust = 1))+labs(x='Ethnicity', y='Age')+scale_fill_discrete(name = "Region")
-
-ggplot(data = ft_cp, aes(x = name_dob_1.ethnicity, fill = name_dob_1.gender)) +
-  geom_histogram(colour = 'white', stat = 'count') + theme_bw() +
-  labs(title = "Distribution of gender across ethnicities",
-       x = 'Ethnicity',
-       y = 'Frequency',
-       fill = 'Gender') + theme(axis.text.x = element_text(
-         angle = 90,
-         vjust = 1,
-         hjust = 1
-       ))#+scale_fill_manual(values = wes_palette("Darjeeling2"))
-
-
-# analysing missingness per sample ----------------------------------------
-
-Samples = read.table("GI_PCA_ID_info(1).txt", sep = '\t', header = T)
-Samples$BBC_nonmissing = NA
-Samples$ODK_nonmissing = NA
-
-#Samples$nonmissing[Samples$Random.barcode %in% merged_seq_samples_joined_cp$SeqID] = rowSums(is.na())
-
-merged_seq_samples_joined_cp1_coded_BBC = subset(merged_seq_samples_joined_cp1,
-                                                 select = c("FBS_Fasting_Blood_Glucose",
-                                                            "HbA1C_Glycosylated_Haemoglobin",
-                                                            "Urea", "Creatinine", "Total_Bilirubin",
-                                                            "AST_SGOT", "ALT_SGPT", "Alkaline_Phosphatase",
-                                                            "Cholesterol", "Triglycerides", "HDL", "LDL",
-                                                            "HB_Haemoglobin", "RBC_Red_Blood_Cell_Count",
-                                                            "MCH_Mean_Corpuscular_Hb","WBC_Total_White_Blood_Cell_Count",
-                                                            "Neutrophils", "Lymphocytes", "Eosinophils", "Monocytes",
-                                                            "Basophils", "Platelet_Count", "Direct_Bilirubin","Indirect_Bilirubin",
-                                                            "Albumin", "Protein", "RBS", "SeqID"))
-merged_seq_samples_joined_cp1_coded_BBC$nonmissing = rowSums(!is.na(merged_seq_samples_joined_cp1_coded_BBC))
-merged_seq_samples_joined_cp1_coded_BBC$nonmissing = merged_seq_samples_joined_cp1_coded_BBC$nonmissing - 1 #for SeqID
-
-merged_seq_samples_joined_cp1_coded_ODK = subset(merged_seq_samples_joined_cp1_coded,
-                                                 select = c("introduction_1.examination_date",
-                                                            "name_dob.gps.Latitude","name_dob.gps.Longitude",
-                                                            "name_dob.gps.Altitude", "name_dob.gps.Accuracy",
-                                                            "name_dob_1.gps_offline", "name_dob_1.state",
-                                                            "name_dob_1.village", "name_dob_1.dob",
-                                                            "name_dob_1.age_on_interview", "name_dob_1.approx_age",
-                                                            "name_dob_1.year_of_birth", "name_dob_1.mother_tongue",
-                                                            "socio_demographics.marital_status","socio_demographics.n_children",
-                                                            "socio_demographics.lang_speak", "socio_demographics.lang_write",
-                                                            "socio_demographics.highest_edu", "socio_demographics.years_edu",
-                                                            "socio_demographics.medium_edu", "socio_demographics.occupation",
-                                                            "socio_demographics.income_family", "smoking_tobacco_alcohol.smoking_status",
-                                                            "smoking_tobacco_alcohol.chewing_tobacco_status","smoking_tobacco_alcohol.alcohol_status",
-                                                            "history_illness.history_illness_self", "history_illness.history_illness_father",
-                                                            "history_illness.history_illness_mother","history_illness.history_illness_family",
-                                                            "history_illness.medication_currently_status", "history_illness.name_medication",
-                                                            "anthropometry.sys_bp", "anthropometry.dia_bp", "anthropometry.head_cir",
-                                                            "anthropometry.height", "anthropometry.weight", "anthropometry.waist_cir",
-                                                            "anthropometry.hip_cir", "anthropometry.body_fat", "anthropometry.glucose_mg_dl",
-                                                            "blood_draw.Blood_draw_fasting", "center", "age", "age_withBBC", "BMI",
-                                                            "SeqID"))
-
-merged_seq_samples_joined_cp1_coded_ODK$nonmissing = rowSums(!is.na(merged_seq_samples_joined_cp1_coded_ODK))
-merged_seq_samples_joined_cp1_coded_ODK$nonmissing = merged_seq_samples_joined_cp1_coded_ODK$nonmissing+1 #adding for ethnicity and sex - 1 for SeqID
-
-
-Samples$BBC_nonmissing[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_BBC$SeqID] = merged_seq_samples_joined_cp1_coded_BBC$nonmissing[match(merged_seq_samples_joined_cp1_coded_BBC$SeqID[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_BBC$SeqID], merged_seq_samples_joined_cp1_coded_BBC$SeqID)]
-Samples$ODK_nonmissing[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_ODK$SeqID] = merged_seq_samples_joined_cp1_coded_ODK$nonmissing[match(merged_seq_samples_joined_cp1_coded_ODK$SeqID[Samples$Random.barcode %in% merged_seq_samples_joined_cp1_coded_ODK$SeqID], merged_seq_samples_joined_cp1_coded_ODK$SeqID)]
-
-write.table(Samples, "Samples_nonmissing_info.txt", sep = '\t', row.names = F)
-
-# final sample list -------------------------------------------------------
-
-
 finalsamplelist = read.table("GI_QCd_sample_ids.txt")
 
 merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp[merged_seq_samples_joined_cp$SeqID %in% finalsamplelist$V1,]
 merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -LocalID)
-merged_seq_samples_joined_cp1$history_illness.name_medication = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.name_medication)
-merged_seq_samples_joined_cp1$history_illness.history_illness_self = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_self)
-merged_seq_samples_joined_cp1$history_illness.history_illness_father = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_father)
-merged_seq_samples_joined_cp1$history_illness.history_illness_mother = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_mother)
-merged_seq_samples_joined_cp1$history_illness.history_illness_family = gsub('\n', ',', merged_seq_samples_joined_cp1$history_illness.history_illness_family)
-library(dplyr)
-merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>% 
-  mutate(across(everything(),  trimws, which = "both"))
-
-merged_seq_samples_joined_cp1$history_illness.name_medication = gsub('Ã°Â\u009fÂ\u0092Â\u008a', '', merged_seq_samples_joined_cp1$history_illness.name_medication)
-#merged_seq_samples_joined_cp1 = gsub('\u','',merged_seq_samples_joined_cp1)
 
 merged_seq_samples_joined_cp1$anthropometry.weight[as.numeric(merged_seq_samples_joined_cp1$anthropometry.weight)>300] = NA
 merged_seq_samples_joined_cp1$anthropometry.hip_cir[as.numeric(merged_seq_samples_joined_cp1$anthropometry.hip_cir)>400] = NA
-colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "calc1"] = "age_withBBC"
-colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "calc_age"] = "age"
-
-merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp1 %>% relocate(SeqID)
-write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_top25_Jul4.txt", sep = '\t', row.names = F)
-
-merged_seq_samples_joined_cp1$anthropometry.head_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.head_cir)
-
-merged_seq_samples_joined_cp1$FBS_Fasting_Blood_Glucose = as.numeric(merged_seq_samples_joined_cp1$FBS_Fasting_Blood_Glucose)
-merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin = as.numeric(merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin)
-#merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin[merged_seq_samples_joined_cp1$HbA1C_Glycosylated_Haemoglobin == 0] = NA
-#merged_df_ft1 = read.table("Added_addnlt_Apr19.txt", sep = "\t", header = T, fill= T, encoding = 'latin1')
-merged_seq_samples_joined_cp1$Urea = as.numeric(merged_seq_samples_joined_cp1$Urea)
-merged_seq_samples_joined_cp1$Creatinine = as.numeric(merged_seq_samples_joined_cp1$Creatinine)
-merged_seq_samples_joined_cp1$Total_Bilirubin = as.numeric(merged_seq_samples_joined_cp1$Total_Bilirubin)
-merged_seq_samples_joined_cp1$ALT_SGPT = as.numeric(merged_seq_samples_joined_cp1$ALT_SGPT)
-merged_seq_samples_joined_cp1$AST_SGOT = as.numeric(merged_seq_samples_joined_cp1$AST_SGOT)
-merged_seq_samples_joined_cp1$Alkaline_Phosphatase = as.numeric(merged_seq_samples_joined_cp1$Alkaline_Phosphatase)
-merged_seq_samples_joined_cp1$Cholesterol = as.numeric(merged_seq_samples_joined_cp1$Cholesterol)
-merged_seq_samples_joined_cp1$Triglycerides = as.numeric(merged_seq_samples_joined_cp1$Triglycerides)
-merged_seq_samples_joined_cp1$HDL = as.numeric(merged_seq_samples_joined_cp1$HDL)
-merged_seq_samples_joined_cp1$LDL = as.numeric(merged_seq_samples_joined_cp1$LDL)
-#merged_seq_samples_joined_cp1$T3_Total = as.numeric(merged_seq_samples_joined_cp1$T3_Total)
-#merged_seq_samples_joined_cp1$T4_Total = as.numeric(merged_seq_samples_joined_cp1$T4_Total)
-#merged_seq_samples_joined_cp1$TSH = as.numeric(merged_seq_samples_joined_cp1$TSH)
-#merged_seq_samples_joined_cp1$Homocysteine_Levels = as.numeric(merged_seq_samples_joined_cp1$Homocysteine_Levels)
-#merged_seq_samples_joined_cp1$Vitamin_B12 = as.numeric(merged_seq_samples_joined_cp1$Vitamin_B12)
-#merged_seq_samples_joined_cp1$Folic_Acid = as.numeric(merged_seq_samples_joined_cp1$Folic_Acid)
-#merged_seq_samples_joined_cp1$Fasting_Insulin_Level = as.numeric(merged_seq_samples_joined_cp1$Fasting_Insulin_Level)
-#merged_seq_samples_joined_cp1$C.Peptide = as.numeric(merged_seq_samples_joined_cp1$C.Peptide)
-merged_seq_samples_joined_cp1$HB_Haemoglobin = as.numeric(merged_seq_samples_joined_cp1$HB_Haemoglobin)
-merged_seq_samples_joined_cp1$RBC_Red_Blood_Cell_Count = as.numeric(merged_seq_samples_joined_cp1$RBC_Red_Blood_Cell_Count) #this is probably in millions
-merged_seq_samples_joined_cp1$MCH_Mean_Corpuscular_Hb = as.numeric(merged_seq_samples_joined_cp1$MCH_Mean_Corpuscular_Hb)
-#merged_seq_samples_joined_cp1$MCHC_Mean_Corpuscular_Hb_Concn = as.numeric(merged_seq_samples_joined_cp1$MCHC_Mean_Corpuscular_Hb_Concn)
-#merged_seq_samples_joined_cp1$MCV_Mean_Corpuscular_Volume = as.numeric(merged_seq_samples_joined_cp1$MCV_Mean_Corpuscular_Volume)
-#merged_seq_samples_joined_cp1$RDW_Red_Cell_Distribution_Width = as.numeric(merged_seq_samples_joined_cp1$RDW_Red_Cell_Distribution_Width)
-merged_seq_samples_joined_cp1$WBC_Total_White_Blood_Cell_Count = as.numeric(merged_seq_samples_joined_cp1$WBC_Total_White_Blood_Cell_Count)
-merged_seq_samples_joined_cp1$Basophils = as.numeric(merged_seq_samples_joined_cp1$Basophils)
-merged_seq_samples_joined_cp1$Eosinophils = as.numeric(merged_seq_samples_joined_cp1$Eosinophils)
-merged_seq_samples_joined_cp1$Lymphocytes = as.numeric(merged_seq_samples_joined_cp1$Lymphocytes)
-merged_seq_samples_joined_cp1$Monocytes = as.numeric(merged_seq_samples_joined_cp1$Monocytes)
-merged_seq_samples_joined_cp1$Neutrophils = as.numeric(merged_seq_samples_joined_cp1$Neutrophils)
-merged_seq_samples_joined_cp1$Platelet_Count = as.numeric(merged_seq_samples_joined_cp1$Platelet_Count)
-#merged_seq_samples_joined_cp1$A_G_Ratio_Albumin_Globulin = as.numeric(merged_seq_samples_joined_cp1$A_G_Ratio_Albumin_Globulin)
-#merged_seq_samples_joined_cp1$Absolute_Neutrophil_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Neutrophil_Count)
-#merged_seq_samples_joined_cp1$Absolute_Basophil_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Basophil_Count)
-#merged_seq_samples_joined_cp1$Absolute_Eosinophil_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Eosinophil_Count)
-#merged_seq_samples_joined_cp1$Absolute_Lymphocyte_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Lymphocyte_Count)
-#merged_seq_samples_joined_cp1$Absolute_Monocyte_Count = as.numeric(merged_seq_samples_joined_cp1$Absolute_Monocyte_Count)
-#merged_seq_samples_joined_cp1$CHOL_HDL_Ratio = as.numeric(merged_seq_samples_joined_cp1$CHOL_HDL_Ratio)
-merged_seq_samples_joined_cp1$Direct_Bilirubin = as.numeric(merged_seq_samples_joined_cp1$Direct_Bilirubin)
-#merged_seq_samples_joined_cp1$ESR = as.numeric(merged_seq_samples_joined_cp1$ESR)
-#merged_seq_samples_joined_cp1$Estimated_Average_Glucose = as.numeric(merged_seq_samples_joined_cp1$Estimated_Average_Glucose)
-#merged_seq_samples_joined_cp1$Gamma_GT_GGTP = as.numeric(merged_seq_samples_joined_cp1$Gamma_GT_GGTP)
-#merged_seq_samples_joined_cp1$Globulin = as.numeric(merged_seq_samples_joined_cp1$Globulin)
-merged_seq_samples_joined_cp1$Indirect_Bilirubin = as.numeric(merged_seq_samples_joined_cp1$Indirect_Bilirubin)
-#merged_seq_samples_joined_cp1$LDL_HDL_Ratio = as.numeric(merged_seq_samples_joined_cp1$LDL_HDL_Ratio)
-#merged_seq_samples_joined_cp1$Hematocrit = as.numeric(merged_seq_samples_joined_cp1$Hematocrit)
-merged_seq_samples_joined_cp1$Albumin = as.numeric(merged_seq_samples_joined_cp1$Albumin)
-merged_seq_samples_joined_cp1$Protein = as.numeric(merged_seq_samples_joined_cp1$Protein)
-#merged_seq_samples_joined_cp1$VLDL = as.numeric(merged_seq_samples_joined_cp1$VLDL)
-#merged_seq_samples_joined_cp1$RDW_SD = as.numeric(merged_seq_samples_joined_cp1$RDW_SD)
-#merged_seq_samples_joined_cp1$CRP = as.numeric(merged_seq_samples_joined_cp1$CRP)
-#merged_seq_samples_joined_cp1$MPV_Mean_Platelet_Volume = as.numeric(merged_seq_samples_joined_cp1$MPV_Mean_Platelet_Volume)
-#merged_seq_samples_joined_cp1$Immature_granulocyte_perc = as.numeric(merged_seq_samples_joined_cp1$Immature_granulocyte_perc)
-#merged_seq_samples_joined_cp1$IG_0.0.3 = as.numeric(merged_seq_samples_joined_cp1$IG_0.0.3)
-#merged_seq_samples_joined_cp1$PDW = as.numeric(merged_seq_samples_joined_cp1$PDW)
-#merged_seq_samples_joined_cp1$PLCR = as.numeric(merged_seq_samples_joined_cp1$PLCR)
-#merged_seq_samples_joined_cp1$PCT = as.numeric(merged_seq_samples_joined_cp1$PCT)
-merged_seq_samples_joined_cp1$RBS = as.numeric(merged_seq_samples_joined_cp1$RBS)
-#merged_seq_samples_joined_cp1$GLYCOSYLATED_Hb_IFCC = as.numeric(merged_seq_samples_joined_cp1$GLYCOSYLATED_Hb_IFCC)
-#merged_seq_samples_joined_cp1$BUN = as.numeric(merged_seq_samples_joined_cp1$BUN)
-#merged_seq_samples_joined_cp1$BUN_Sr_creatinine = as.numeric(merged_seq_samples_joined_cp1$BUN_Sr_creatinine)
-#merged_seq_samples_joined_cp1$Uric_Acid = as.numeric(merged_seq_samples_joined_cp1$Uric_Acid)
-#merged_seq_samples_joined_cp1$Estimated_Glomerular_filtration_rate = as.numeric(merged_seq_samples_joined_cp1$Estimated_Glomerular_filtration_rate)
-#merged_seq_samples_joined_cp1$NonHDL_Cholesterol = as.numeric(merged_seq_samples_joined_cp1$NonHDL_Cholesterol)
-#merged_seq_samples_joined_cp1$Vitamin_D_25_Hydroxy = as.numeric(merged_seq_samples_joined_cp1$Vitamin_D_25_Hydroxy)
-#merged_seq_samples_joined_cp1$Free_T3 = as.numeric(merged_seq_samples_joined_cp1$Free_T3)
-#merged_seq_samples_joined_cp1$Free_T4 = as.numeric(merged_seq_samples_joined_cp1$Free_T4)
-#merged_seq_samples_joined_cp1$Hs.CRP_High_Sensitivity_CRP = as.numeric(merged_seq_samples_joined_cp1$Hs.CRP_High_Sensitivity_CRP)
-#merged_seq_samples_joined_cp1$Transferrin = as.numeric(merged_seq_samples_joined_cp1$Transferrin)
-#merged_seq_samples_joined_cp1$Polymorphs = as.numeric(merged_seq_samples_joined_cp1$Polymorphs)
-#merged_seq_samples_joined_cp1$Sodium = as.numeric(merged_seq_samples_joined_cp1$Sodium)
-#merged_seq_samples_joined_cp1$Potassium = as.numeric(merged_seq_samples_joined_cp1$Potassium)
-#merged_seq_samples_joined_cp1$SerumIronStudy_TIBC_UIBC = as.numeric(merged_seq_samples_joined_cp1$SerumIronStudy_TIBC_UIBC)
-# merged_seq_samples_joined_cp1$Transferrin_Saturation = as.numeric(merged_seq_samples_joined_cp1$Transferrin_Saturation)
-# merged_seq_samples_joined_cp1$Immature_granulocytes = as.numeric(merged_seq_samples_joined_cp1$Immature_granulocytes)
-# merged_seq_samples_joined_cp1$LDH_1 = as.numeric(merged_seq_samples_joined_cp1$LDH_1)
-# merged_seq_samples_joined_cp1$Total_Calcium = as.numeric(merged_seq_samples_joined_cp1$Total_Calcium)
-# merged_seq_samples_joined_cp1$Serum_Iron = as.numeric(merged_seq_samples_joined_cp1$Serum_Iron)
-# merged_seq_samples_joined_cp1$MENTZ1 = as.numeric(merged_seq_samples_joined_cp1$MENTZ1)
-# merged_seq_samples_joined_cp1$NLR_4 = as.numeric(merged_seq_samples_joined_cp1$NLR_4)
-# merged_seq_samples_joined_cp1$PO4_mg.dl = as.numeric(merged_seq_samples_joined_cp1$PO4_mg.dl)
-# merged_seq_samples_joined_cp1$Cl._mEq.L = as.numeric(merged_seq_samples_joined_cp1$Cl._mEq.L)
-# merged_seq_samples_joined_cp1$SGOT_SGPT = as.numeric(merged_seq_samples_joined_cp1$SGOT_SGPT)
-# merged_seq_samples_joined_cp1$CHOL.LDL_Ratio = as.numeric(merged_seq_samples_joined_cp1$CHOL.LDL_Ratio)
-# merged_seq_samples_joined_cp1$APB. = as.numeric(merged_seq_samples_joined_cp1$APB.)
-# merged_seq_samples_joined_cp1$APOA = as.numeric(merged_seq_samples_joined_cp1$APOA)
-# merged_seq_samples_joined_cp1$APOB = as.numeric(merged_seq_samples_joined_cp1$APOB)
-# merged_seq_samples_joined_cp1$LPA = as.numeric(merged_seq_samples_joined_cp1$LPA)
-merged_seq_samples_joined_cp1$anthropometry.head_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.head_cir)
-merged_seq_samples_joined_cp1$anthropometry.height = as.numeric(merged_seq_samples_joined_cp1$anthropometry.height)
-merged_seq_samples_joined_cp1$anthropometry.hip_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.hip_cir)
-merged_seq_samples_joined_cp1$anthropometry.sys_bp = as.numeric(merged_seq_samples_joined_cp1$anthropometry.sys_bp)
-merged_seq_samples_joined_cp1$anthropometry.dia_bp = as.numeric(merged_seq_samples_joined_cp1$anthropometry.dia_bp)
-merged_seq_samples_joined_cp1$anthropometry.body_fat = as.numeric(merged_seq_samples_joined_cp1$anthropometry.body_fat)
-merged_seq_samples_joined_cp1$anthropometry.waist_cir = as.numeric(merged_seq_samples_joined_cp1$anthropometry.waist_cir)
-merged_seq_samples_joined_cp1$anthropometry.weight = as.numeric(merged_seq_samples_joined_cp1$anthropometry.weight)
-merged_seq_samples_joined_cp1$anthropometry.glucose_mg_dl = as.numeric(merged_seq_samples_joined_cp1$anthropometry.glucose_mg_dl)
-# merged_seq_samples_joined_cp1$Granulocytes = as.numeric(merged_seq_samples_joined_cp1$Granulocytes)
-# merged_seq_samples_joined_cp1$Granulocyte_count = as.numeric(merged_seq_samples_joined_cp1$Granulocyte_count)
-# merged_seq_samples_joined_cp1$MID = as.numeric(merged_seq_samples_joined_cp1$MID)
-# merged_seq_samples_joined_cp1$MID_Percent = as.numeric(merged_seq_samples_joined_cp1$MID_Percent)
-merged_seq_samples_joined_cp1$age = as.numeric(merged_seq_samples_joined_cp1$age)
-merged_seq_samples_joined_cp1$age_withBBC = as.numeric(merged_seq_samples_joined_cp1$age_withBBC)
-
-merged_seq_samples_joined_cp1$Albumin[merged_seq_samples_joined_cp1$Albumin>60] = NA
-
-library(dplyr)
-library(janitor)
-library(lubridate)
-
-convert_to_date_custom <- function(x) {
-  if (grepl("^[0-9]{5}$", x)) {
-    # If it's an Excel date number
-    as.Date(as.numeric(x), origin = "1899-12-30")
-  } else if (grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", x)) {
-    # If it's a date in the format YYYY-MM-DD
-    as.Date(x)
-  } else if (grepl("^[0-9]{10}(\\.[0-9]+)?$", x)) {
-    # If it's a Unix timestamp (with optional milliseconds)
-    as.Date(as.POSIXct(as.numeric(x), origin = "1970-01-01", tz = "UTC"))
-  } else {
-    # Retain the original value if it doesn't match any pattern
-    x
-  }
-}
-# Create a new column for the converted dates
-merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>%
-  mutate(converted_date = sapply(introduction_1.examination_date, convert_to_date_custom))
-
-convert_dates1 <- function(date_vector) {
-  converted_dates <- sapply(date_vector, function(date) {
-    if (nchar(date) == 5 && all(is.numeric(date))) {  # Check if string has 5 characters and all characters are numeric
-      formatted_date <- as.Date(as.numeric(date), origin = "1970-01-01")
-      return(format(formatted_date, "%Y-%m-%d"))
-    } else {
-      return(date)  # Leave other formats unchanged
-    }
-  })
-  return(converted_dates)
-}
-
-# Apply the function to your column
-merged_seq_samples_joined_cp1$converted_date <- convert_dates1(merged_seq_samples_joined_cp1$converted_date)
-
-merge_num_new = dplyr::select_if(merged_seq_samples_joined_cp1, is.numeric)
-pdf("distbycenter_top25_newlist.pdf", width = 11)
-variables = colnames(merge_num_new)
-for(V in variables){
-  if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
-  boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$center, main = V, ylab = V, xlab = "Centre")
-}
-
-dev.off()
-
-# plotting boxplots against ethnicity -------------------------------------
-pdf("distbyethnicity_top25_newlist.pdf", width = 11)
-variables = colnames(merge_num_new)
-for(V in variables){
-  if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
-  boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$name_dob_1.ethnicity, main = V, las = 2, cex.axis = 0.5, ylab = V, xlab = "Ethnicity")
-}
-
-dev.off()
-
-library(ggplot2)
-library(dplyr)
-library(rlang)
-
-# Start the PDF device
-pdf("allscatterplots_top25_Jul4.pdf", width = 10, height = 10)
-
-for (i in 1:(ncol(merge_num_new))) { 
-  for (j in 1:(ncol(merge_num_new))) {
-    if (i != j) {  # Avoid plotting a variable against itself
-      # Check for enough complete observations
-      if (sum(complete.cases(merge_num_new[, c(i, j)])) >= 3) {
-        # Print the variable names on screen
-        cat("Plotting:", names(merge_num_new)[i], "vs", names(merge_num_new)[j], "\n")
-        
-        # Calculate correlation coefficient
-        correlation <- cor.test(merge_num_new[,i], merge_num_new[,j], method = "spearman")$estimate
-        
-        # Create the plot
-        p <- ggplot(merge_num_new, aes_string(x = names(merge_num_new)[i], y = names(merge_num_new)[j])) +
-          geom_point(aes(color = factor(merged_seq_samples_joined_cp1$center))) +
-          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
-                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
-                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
-                                        "#000075")) +
-          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
-          labs(title = paste(names(merge_num_new)[i], "vs", names(merge_num_new)[j]))+theme_bw()
-        
-        # Print the plot
-        print(p)
-      } else {
-        warning("Not enough complete observations to calculate correlation for variables ", 
-                names(merge_num_new)[i], " and ", names(merge_num_new)[j])
-      }
-      
-    }
-  }
-}
-
-# Close the PDF device
-dev.off()
 
 
-setdiff(finalsamplelist$V1, seq_samples$SeqID) #checking if all samples in the new list were present in the bigger one
+# remove all samples with only BBC or only ODK ----------------------------
 
-test = read.table("SequencedSamples_top25_Jul3_new.txt", sep = '\t', header = T)
-
-
-# population and region ---------------------------------------------------
-
-region_provided = read_excel("Population-9871.xlsx")
-
-region_provided$Population = tolower(region_provided$Population)
-merged_seq_samples_joined_cp1$region_provided = NA
-
-merged_seq_samples_joined_cp1$region_provided[merged_seq_samples_joined_cp1$name_dob_1.ethnicity %in% region_provided$Population] <- region_provided$Region[match(merged_seq_samples_joined_cp1$name_dob_1.ethnicity[merged_seq_samples_joined_cp1$name_dob_1.ethnicity %in% region_provided$Population], region_provided$Population)]
-merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$region=="Western"] = "West"
-merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$region=="Northeast"] = "North-East"
-
-# # Sample dataframe
-# 
-# # Function to convert various date and datetime formats to Date
-# convert_to_date <- function(x) {
-#   if (grepl("^[0-9]{5}$", x)) {
-#     # If it's an Excel date number
-#     as.Date(as.numeric(x), origin = "1899-12-30")
-#   } else if (grepl("^[0-9]{4}-[0-9]{2}-[0-9]{2}$", x)) {
-#     # If it's a date in the format YYYY-MM-DD
-#     as.Date(x)
-#   } else if (grepl("^[0-9]{10}(\\.[0-9]+)?$", x)) {
-#     # If it's a Unix timestamp (with optional milliseconds)
-#     as.POSIXct(as.numeric(x), origin = "1970-01-01", tz = "UTC")
-#   } else {
-#     NA
-#   }
-# }
-# 
-# # Convert the date_column
-# merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>%
-#   mutate(introduction_1.examination_date = sapply(introduction_1.examination_date, convert_to_date))
+ft$nonmissing = rowSums(!is.na(ft))
+ft = subset(ft, select = -nonmissing)
 
 
-region_notmatching = merged_seq_samples_joined_cp1[merged_seq_samples_joined_cp1$region != merged_seq_samples_joined_cp1$region_provided,]
-region_notmatching = subset(region_notmatching, select = c("SeqID", "name_dob_1.ethnicity", "region", "region_provided"))
+# writing file ------------------------------------------------------------
+
+write.table(ft_cp, "20000freeze_Jul16.txt", sep = '\t', row.names = F)
 
 
-# data based on ethnicity codes provided ----------------------------------
+# checking which samples are not there ------------------------------------
 
-merged_seq_samples_joined_cp1$name_dob_1.state[merged_seq_samples_joined_cp1$SeqID=="VQ80153956HQ"] = "karnataka"
-merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$SeqID=="VQ80153956HQ"] = "South"
-
-merged_seq_samples_joined_cp1$name_dob_1.state[merged_seq_samples_joined_cp1$SeqID=="DF48339419BZ"] = "delhi"
-merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$SeqID=="DF48339419BZ"] = "North"
-
-merged_seq_samples_joined_cp1$name_dob_1.state[merged_seq_samples_joined_cp1$SeqID=="LU73819286PP"] = "andra_pradesh"
-#merged_seq_samples_joined_cp1$region[merged_seq_samples_joined_cp1$SeqID=="LU73819286PP"] = "North"
-
-mappingslist = read.table("seqid_mappings.txt", sep = '\t', header = T)
-merged_seq_samples_joined_cp1$ethnicity_mapping[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID] <- mappingslist$Mapping[match(merged_seq_samples_joined_cp1$SeqID[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
-#colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "mapping"] = "ethnicity_mapping"
-
-
-merged_seq_samples_joined_cp1$region_list[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID] <- mappingslist$region[match(merged_seq_samples_joined_cp1$SeqID[merged_seq_samples_joined_cp1$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
-
-region_check = merged_seq_samples_joined_cp1[merged_seq_samples_joined_cp1$region != merged_seq_samples_joined_cp1$region_list,]
-region_check = subset(merged_seq_samples_joined_cp1, select = c("SeqID", "name_dob_1.ethnicity", "name_dob_1.state", "region", "region_list"))
-region_check = region_check[region_check$region != region_check$region_list,]
-region_check = subset(region_check, region!="Unknown")
-region_check = subset(region_check, region_list!="Northeast")
-
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Dec 2, 2020"] = "2020-12-02"
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Dec 3, 2020"] = "2020-12-03"
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Dec 4, 2020"] = "2020-12-05"
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Feb 10, 2021"] = "2021-02-10"
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Mar 10, 2021"] = "2021-03-10"
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Mar 11, 2021"] = "2021-03-11"
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="Mar 9, 2021"] = "2021-03-09"
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="NA"] = NA
-
-merged_seq_samples_joined_cp1$introduction_1.examination_date = gsub("/", "-", merged_seq_samples_joined_cp1$introduction_1.examination_date)
-
-library(parsedate)
-merged_seq_samples_joined_cp1$introduction_1.examination_date = as.Date(parse_date(merged_seq_samples_joined_cp1$introduction_1.examination_date))
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -converted_date)
-
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1941-11-12"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1946-07-06"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1951-04-01"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1959-06-03"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1969-04-28"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1974-04-29"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1977-12-15"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1979-12-08"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1982-12-08"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1985-07-09"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1990-02-15"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1999-07-13"] = NA
-merged_seq_samples_joined_cp1$introduction_1.examination_date[merged_seq_samples_joined_cp1$introduction_1.examination_date=="1954-11-15"] = NA
-
-
-  merge_num_new = dplyr::select_if(merged_seq_samples_joined_cp1, is.numeric)
-  pdf("distbycenter_top25_newlist_coded.pdf", width = 11)
-  variables = colnames(merge_num_new)
-  for(V in variables){
-    if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
-    boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$center, main = V, ylab = V, xlab = "Centre")
-  }
-  
-  dev.off()
-  
-  # plotting boxplots against ethnicity -------------------------------------
-  pdf("distbyethnicity_top25_newlist_coded.pdf", width = 11)
-  variables = colnames(merge_num_new)
-  for(V in variables){
-    if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
-    boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$ethnicity_mapping, main = V, las = 2, cex.axis = 0.3, ylab = V, xlab = "Ethnicity code")
-  }
-  
-  dev.off()
-
-library(ggplot2)
-library(dplyr)
-library(rlang)
-
-# Start the PDF device
-pdf("allscatterplots_top25_Jul5.pdf", width = 10, height = 10)
-
-for (i in 1:(ncol(merge_num_new))) { 
-  for (j in 1:(ncol(merge_num_new))) {
-    if (i != j) {  # Avoid plotting a variable against itself
-      # Check for enough complete observations
-      if (sum(complete.cases(merge_num_new[, c(i, j)])) >= 3) {
-        # Print the variable names on screen
-        cat("Plotting:", names(merge_num_new)[i], "vs", names(merge_num_new)[j], "\n")
-        
-        # Calculate correlation coefficient
-        correlation <- cor.test(merge_num_new[,i], merge_num_new[,j], method = "spearman")$estimate
-        
-        # Create the plot
-        p <- ggplot(merge_num_new, aes_string(x = names(merge_num_new)[i], y = names(merge_num_new)[j])) +
-          geom_point(aes(color = factor(merged_seq_samples_joined_cp1$center))) +
-          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
-                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
-                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
-                                        "#000075")) +
-          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
-          labs(title = paste(names(merge_num_new)[i], "vs", names(merge_num_new)[j]))+theme_bw()
-        
-        # Print the plot
-        print(p)
-      } else {
-        warning("Not enough complete observations to calculate correlation for variables ", 
-                names(merge_num_new)[i], " and ", names(merge_num_new)[j])
-      }
-      
-    }
-  }
-}
-
-# Close the PDF device
-dev.off()
-
-
-# exporting with ethnicity codes ------------------------------------------
-
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -region)
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -region_provided)
-colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1)=="region_list"] = "region"
-
-
-#ODK missing
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "FZ96400519ZJ")
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "YH57309496DV")
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "NZ70398796FC")
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, SeqID != "OP71364516NH")
-
-
-#BBC missing
-merged_seq_samples_joined_cp1 <- merged_seq_samples_joined_cp1 %>%
-  filter(!SeqID %in% c("JB19915796VG","IS45200288IT",
-                       "YV18489110PG","ZE92129191DF","UL02417306KC","DD08748516KN","OY26587204GI","ZP56763451UT",
-                       "WL70421785PU","LO18395070BP","EA28473439KJ","RC17320781GF","WJ10561545RM","AW32363210OO",
-                       "EG67169761DT","TV25372501TR","DL51915862KV","QA22761952KR","HE50067073ZK","ZU97364024NR",
-                       "VF53746037QZ","ZW24465850FJ","DZ60198489XQ","EG72076110XG","OJ68724196NQ","MI18571073LA",
-                       "IU24243367GU","LQ01971461LF","IV37799022TX","RK63273944CO","SE34442990SA","CG66748442ST",
-                       "FT09515720CG"))
-
-# merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp1[, !SeqID %in% c("JB19915796VG","IS45200288IT",
-#                      "YV18489110PG","ZE92129191DF","UL02417306KC","DD08748516KN","OY26587204GI","ZP56763451UT",
-#                      "WL70421785PU","LO18395070BP","EA28473439KJ","RC17320781GF","WJ10561545RM","AW32363210OO",
-#                      "EG67169761DT","TV25372501TR","DL51915862KV","QA22761952KR","HE50067073ZK","ZU97364024NR",
-#                      "VF53746037QZ","ZW24465850FJ","DZ60198489XQ","EG72076110XG","OJ68724196NQ","MI18571073LA",
-#                      "IU24243367GU","LQ01971461LF","IV37799022TX","RK63273944CO","SE34442990SA","CG66748442ST",
-#                      "FT09515720CG")]
-
-merged_seq_samples_joined_cp1_coded = merged_seq_samples_joined_cp1
-merged_seq_samples_joined_cp1_coded = subset(merged_seq_samples_joined_cp1_coded, select = -name_dob_1.ethnicity)
-
-merged_seq_samples_joined_cp1_coded2 = subset(merged_seq_samples_joined_cp1_coded, select = -ethnicity_mapping)
-write.table(merged_seq_samples_joined_cp1_coded, "GI_SequencedSamples_top25_Jul5_coded.txt", sep = '\t', row.names = F)
-write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_top25_Jul5.txt", sep = '\t', row.names = F)
-write.table(merged_seq_samples_joined_cp1_coded2, "GI_SequencedSamples_top25_Jul5_noethnicity.txt", sep = '\t', row.names = F)
-
-library(naniar)
-gg_miss_fct(x = merged_seq_samples_joined_cp1_coded, fct = center)+scale_fill_gradientn(colors = c("navy","gold", "white"))
+ft_old = read.table("20000_freeze.txt", sep = '\t', header = T)
