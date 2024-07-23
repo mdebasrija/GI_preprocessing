@@ -3594,6 +3594,7 @@ resolveddups$age = as.numeric(resolveddups$age)
 resolveddups$age_withBBC = as.numeric(resolveddups$age_withBBC)
 resolveddups = resolveddups[-which(rowSums(is.na(resolveddups))>90),]
 
+
 merged_seq_samples1 = rbind(merged_seq_samples1, resolveddups)
 
 # How did these samples go missing? ---------------------------------------
@@ -3697,11 +3698,194 @@ totrackdownold = read_excel("to track down May 24.xlsx")
 
 
 # Removing Hakkipikki-Halakki ---------------------------------------------
+merged_seq_samples1 <- subset(merged_seq_samples1, name_dob_1.ethnicity != "hakkipikki")
+merged_seq_samples1 <- subset(merged_seq_samples1, name_dob_1.ethnicity != "halakki")
 
+# Take top 25 variables ---------------------------------------------------
+
+empty_cols = sort(colSums(is.na(merged_seq_samples1)|merged_seq_samples1==""))
+empty_cols = data.frame(Column = names(empty_cols), missing_values = empty_cols)
+rownames(empty_cols)=NULL
+empty_cols$missing_values_perc = (empty_cols$missing_values/length(merged_seq_samples1$LocalID))*100
+
+empty_cols <- empty_cols %>% mutate(across(c('missing_values_perc'), round, 2))
+
+empty_cols$label = NA
+empty_cols$label[empty_cols$Column %in% colnames(odk_main)] = "ODK"
+empty_cols$label[empty_cols$Column == "anthropometry.waist_cir"] = "ODK"
+empty_cols$label[empty_cols$Column == "region"] = "meta"
+empty_cols$label[empty_cols$Column == "center"] = "ODK"
+empty_cols$label[empty_cols$Column == "BMI"] = "ODK"
+empty_cols$label[empty_cols$Column == "age"] = "ODK"
+empty_cols$label[empty_cols$Column == "age_withBBC"] = "ODK"
+empty_cols$label[empty_cols$Column == "LocalID"] = "Key"
+empty_cols$label[empty_cols$Column == "SeqID"] = "Key"
+empty_cols$label[!(empty_cols$label %in% c("Key", "ODK", "meta"))] = "BBC"
+
+
+merged_seq_samples1_cp = merged_seq_samples1
+
+odk_variables = empty_cols[empty_cols$label %in% c("Key","ODK","meta"),]
+odk_variables = subset(odk_variables, select = Column)
+odk_variables = as.list(odk_variables)
+merged_seq_samples1_01 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% odk_variables$Column]
+
+BBC_variables = empty_cols[empty_cols$label %in% c("BBC"),]
+BBC_variables = BBC_variables[1:25,]
+BBC_variables = as.list(subset(BBC_variables, select = Column))
+BBC_variables_to_add = c("RBS", "FBS_Fasting_Blood_Glucose")
+BBC_variables$Column = append(BBC_variables$Column, BBC_variables_to_add)
+merged_seq_samples1_02 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% BBC_variables$Column]
+
+merged_seq_samples_joined = cbind(merged_seq_samples1_01, merged_seq_samples1_02)
+
+
+# recoded ethnicities -----------------------------------------------------
+b = read.table("populations.txt", header=T,stringsAsFactors = F, sep="\t")
+#b = trimws(b)
+popn_info = merged_seq_samples_joined[,c('LocalID', 'SeqID', 'name_dob_1.ethnicity', 'name_dob_1.state', 'region')]
+b$Population = tolower(b$Population)
+
+popn_info_merged = merge(popn_info, b, by.x=3, by.y=1,sort=F,all.x=T)
+popn_info_merged$region[which(popn_info_merged$region == "Unknown")] = 
+  popn_info_merged$Region[which(popn_info_merged$region == 'Unknown')]
+
+popn_info_merged$Region = trimws(popn_info_merged$Region)
+
+popn_info_merged = unique(popn_info_merged)
+
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="rajasthan"] = "North"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="delhi"] = "North"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="new delhi"] = "North"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="haryana"] = "North"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="karnataka"] = "South"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="madya_pradesh"] = "Central"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="uttaranchal"] = "Central"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="uttar_pradesh"] = "Central"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="himachal_pradesh"] = "North"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="gujarat"] = "West"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="maharashtra"] = "West"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="west_bengal"] = "East"
+popn_info_merged$Region[popn_info_merged$name_dob_1.state=="jharkhand"] = "East"
+popn_info_merged = unique(popn_info_merged)
+
+popn_info_merged$regioncode = "N"
+popn_info_merged$regioncode[which(popn_info_merged$region == "South")] = "S"
+popn_info_merged$regioncode[which(popn_info_merged$region == "West")] = "W"
+popn_info_merged$regioncode[which(popn_info_merged$region == "East")] = "E"
+popn_info_merged$regioncode[which(popn_info_merged$region == "North-East")] = "NE"
+popn_info_merged$regioncode[which(popn_info_merged$region == "Central")] = "C"
+
+popn_info_merged$ID = paste0(popn_info_merged$regioncode, "-", popn_info_merged$Language.Family, "-", popn_info_merged$Region)
+
+ethnicities = unique(popn_info_merged$name_dob_1.ethnicity)
+ethmap = data.frame(ethnicities, 1:length(ethnicities))
+rownames(ethmap) = ethmap[,1]
+
+popn_info_merged$Mapping = NA
+for(id in unique(popn_info_merged$ID)){
+  rowstoedit = which(popn_info_merged$ID == id)
+  eth = popn_info_merged[rowstoedit, 'name_dob_1.ethnicity']
+  eth2 = ethmap[eth,2]
+  nums = c(1:length(rowstoedit))
+  newids = paste0(popn_info_merged$ID[rowstoedit],"-",eth2)
+  popn_info_merged$Mapping[rowstoedit] = newids
+}
+
+write.table(popn_info_merged, file="seqid_mappings.txt", quote=F,row.names=F,sep="\t")
+
+mappingslist = read.table("seqid_mappings.txt", sep = '\t', header = T)
+merged_seq_samples_joined$ethnicity_mapping[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID] <- mappingslist$Mapping[match(merged_seq_samples_joined$SeqID[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
+#colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "mapping"] = "ethnicity_mapping"
+
+
+merged_seq_samples_joined$region_list[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID] <- mappingslist$region[match(merged_seq_samples_joined$SeqID[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
+
+region_check = merged_seq_samples_joined[merged_seq_samples_joined$region != merged_seq_samples_joined$region_list,]
+region_check = subset(merged_seq_samples_joined, select = c("SeqID", "name_dob_1.ethnicity", "name_dob_1.state", "region", "region_list"))
+region_check = region_check[region_check$region != region_check$region_list,]
+region_check = subset(region_check, region!="Unknown")
+#region_check = subset(region_check, region_list!="Northeast")
+
+merged_seq_samples_joined = subset(merged_seq_samples_joined, select = -region)
+names(merged_seq_samples_joined)[names(merged_seq_samples_joined) == "region_list"] = "region"
 
 # Export files (remove Age!) ------------------------------------------------------------
 
+finalsamplelist = read.table("GI_QCd_sample_ids.txt")
 
+merged_seq_samples_joined_cp1 = merged_seq_samples_joined[merged_seq_samples_joined$SeqID %in% finalsamplelist$V1,]
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -LocalID)
+merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp1 %>% dplyr::select("SeqID", everything())
+write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_9385_Jul23.txt", sep = '\t', row.names = F)
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -name_dob_1.ethnicity)
+write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_9385_Jul23_coded.txt", sep = '\t', row.names = F)
+
+# Dist by center and ethnicity -----------------------------------------------
+merge_num_new = dplyr::select_if(merged_seq_samples_joined_cp1, is.numeric)
+pdf("distbycenter_top25_newlist_coded.pdf", width = 11)
+variables = colnames(merge_num_new)
+for(V in variables){
+  if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
+  boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$center, main = V, ylab = V, xlab = "Centre")
+}
+
+dev.off()
+
+# plotting boxplots against ethnicity -------------------------------------
+pdf("distbyethnicity_top25_newlist_coded.pdf", width = 11)
+variables = colnames(merge_num_new)
+for(V in variables){
+  if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
+  boxplot(as.numeric(merge_num_new[,V]) ~ merged_seq_samples_joined_cp1$ethnicity_mapping, main = V, las = 2, cex.axis = 0.3, ylab = V, xlab = "Ethnicity code")
+}
+
+dev.off()
+
+
+# scatterplots ------------------------------------------------------------
+
+library(ggplot2)
+library(dplyr)
+library(rlang)
+
+# Start the PDF device
+pdf("allscatterplots_top25_Jul23.pdf", width = 10, height = 10)
+
+for (i in 1:(ncol(merge_num_new))) { 
+  for (j in 1:(ncol(merge_num_new))) {
+    if (i != j) {  # Avoid plotting a variable against itself
+      # Check for enough complete observations
+      if (sum(complete.cases(merge_num_new[, c(i, j)])) >= 3) {
+        # Print the variable names on screen
+        cat("Plotting:", names(merge_num_new)[i], "vs", names(merge_num_new)[j], "\n")
+        
+        # Calculate correlation coefficient
+        correlation <- cor.test(merge_num_new[,i], merge_num_new[,j], method = "spearman")$estimate
+        
+        # Create the plot
+        p <- ggplot(merge_num_new, aes_string(x = names(merge_num_new)[i], y = names(merge_num_new)[j])) +
+          geom_point(aes(color = factor(merged_seq_samples_joined_cp1$center))) +
+          scale_color_manual(values = c("#bfef45", "#800000", "#ffe119", "#f032e6",
+                                        "#a9a9a9", "#e6194B", "#c19a6b", "#469990",
+                                        "#aaffc3", "#911eb4", "#808000", "#fabed4",
+                                        "#000075")) +
+          geom_text(aes(label = paste("Correlation:", round(correlation, 2))), x = Inf, y = -Inf, hjust = 1, vjust = -1) +
+          labs(title = paste(names(merge_num_new)[i], "vs", names(merge_num_new)[j]))+theme_bw()
+        
+        # Print the plot
+        print(p)
+      } else {
+        warning("Not enough complete observations to calculate correlation for variables ", 
+                names(merge_num_new)[i], " and ", names(merge_num_new)[j])
+      }
+      
+    }
+  }
+}
+
+# Close the PDF device
+dev.off()
 
 # putting values back in ft -----------------------------------------------
 
@@ -3892,13 +4076,6 @@ missingids$ODKmissingstatus[missingids$LocalID %in% odk_main$introduction_1.loca
 
 write.table(missingids, "Missing_samples_20k_ODKmissing.txt", row.names = F)
 
-finalsamplelist = read.table("GI_QCd_sample_ids.txt")
-
-merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp[merged_seq_samples_joined_cp$SeqID %in% finalsamplelist$V1,]
-merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -LocalID)
-
-merged_seq_samples_joined_cp1$anthropometry.weight[as.numeric(merged_seq_samples_joined_cp1$anthropometry.weight)>300] = NA
-merged_seq_samples_joined_cp1$anthropometry.hip_cir[as.numeric(merged_seq_samples_joined_cp1$anthropometry.hip_cir)>400] = NA
 
 
 # remove all samples with only BBC or only ODK ----------------------------
@@ -3915,3 +4092,18 @@ write.table(ft_cp, "20000freeze_Jul16.txt", sep = '\t', row.names = F)
 # checking which samples are not there ------------------------------------
 
 ft_old = read.table("20000_freeze.txt", sep = '\t', header = T)
+
+
+# Tracking missing samples ------------------------------------------------
+
+list_of_samples = read_xlsx("Genome India BB data after duplication check.xlsx")
+
+missingids = as.data.frame(setdiff(list_of_samples$`Local Id`, ft_cp$LocalID))
+missingids$ODKmissingstatus = NA
+colnames(missingids)[colnames(missingids) == "setdiff(list_of_samples$`Local Id`, ft_cp$LocalID)"] = "LocalID"
+
+missingids$ODKmissingstatus[missingids$LocalID %in% odk_main$introduction.local_id_barcode] = "Present"
+missingids$ODKmissingstatus[missingids$LocalID %in% odk_main$introduction_1.local_id_manual] = "Present"
+
+write.table(missingids, "Missing_samples_20k_ODKmissing_JUl16.txt", row.names = F)
+
