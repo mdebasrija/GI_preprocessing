@@ -7,10 +7,10 @@ library(ggplot2)
 library(ggprism)
 #library(ggsci)
 library(wesanderson)
-library(misty)
+#library(misty)
 library(anytime)
 library(lubridate)
-library(xlsx)
+#library(xlsx)
 library(here)
 library(tidyverse)
 library(rlang)
@@ -1062,6 +1062,7 @@ ft$socio_demographics.marital_status[which(ft$socio_demographics.marital_status=
 # History of illness cleaning ---------------------------------------------
 
 ft$history_illness.history_illness_self=tolower(ft$history_illness.history_illness_self)
+ft$history_illness.history_illness_family=tolower(ft$history_illness.history_illness_family)
 ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="")] = NA
 ft$history_illness.medication_currently_status = tolower(ft$history_illness.medication_currently_status)
 ft$history_illness.medication_currently_status[which(ft$history_illness.medication_currently_status=='')] = NA
@@ -1116,6 +1117,132 @@ ft$history_illness.history_illness_self[which(ft$history_illness.history_illness
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="nau")]=NA
 ft$history_illness.history_illness_self[which(ft$history_illness.history_illness_self=="nra")]=NA
 
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="n")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="n as")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="n/a")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="na")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="Na")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="NA")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="na un")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="naa")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="naq")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="ni")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="Ni")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nik")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nikj")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nikq")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nil")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nil a")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nil.")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nilf")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nill")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nilo")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nilpo")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nilth")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nily")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nio")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nip")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="njl")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nkl")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nl")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="no")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nol")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="none")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="not")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="not knowing")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nq")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="ns")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="nw")]=NA
+ft$history_illness.history_illness_family[which(ft$history_illness.history_illness_family=="Ni")]=NA
+ft$history_illness.history_illness_family= gsub("yelder*", "elder ", ft$history_illness.history_illness_family)
+
+ft$history_illness.history_illness_mother = tolower(ft$history_illness.history_illness_mother)
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="n5")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="na.")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nana")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nea")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="n/a")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="na")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="na a")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="NA")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="na un")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="naa")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="naq")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="ni")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="ni,")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="ni.")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nik")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nikj")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nikq")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nil")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nil a")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nil.")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nilf")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nill")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nilo")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nilpo")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nilth")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nily")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nio")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nip")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="njl")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nkl")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nl")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="no")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nol")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="none")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="not")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="not known")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="not known (died in childhood)")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nq")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nz")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="nw")]=NA
+ft$history_illness.history_illness_mother[which(ft$history_illness.history_illness_mother=="Ni")]=NA
+
+ft$history_illness.history_illness_father = tolower(ft$history_illness.history_illness_father)
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="n0")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="na.")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nana")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nea")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="n/a")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="na")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="na( snake bite death")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nan")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="NA")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="na un")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="naa")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="naq")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="ni")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="ni,")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="ni.")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nik")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nil nil")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nikq")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nil")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nil a")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="niil")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nilf")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nill")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="niln")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nilpo")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nilth")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nily")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nio")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nip")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="njl")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="njo")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nl")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="no")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="no such majar illneses")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nol")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="none")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="noo")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="not known")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="not known (died in childhood)")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nq")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nz")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="nw")]=NA
+ft$history_illness.history_illness_father[which(ft$history_illness.history_illness_father=="Ni")]=NA
 
 ft$history_illness.name_medication[ft$history_illness.name_medication=="Na"] = NA
 ft$history_illness.name_medication[ft$history_illness.name_medication=="No"] = NA
@@ -1556,6 +1683,8 @@ SKIM_joined = subset(SKIM_joined, select = -nonmissing)
 
 SKIM_joined$name_dob_1.dob = as.character(SKIM_joined$name_dob_1.dob)
 SKIM_joined$introduction_1.examination_date = as.character(SKIM_joined$introduction_1.examination_date)
+
+SKIM_joined$anthropometry.body_fat = NA
 
 ft = rbind(ft, SKIM_joined)
 
@@ -3272,6 +3401,7 @@ ft$name_dob_1.age_on_interview[which(ft$name_dob_1.age_on_interview<18)] = NA
 ft$Creatinine[ft$Creatinine==0] = NA
 ft$Total_Bilirubin[ft$Total_Bilirubin<0] = NA
 ft$Total_Bilirubin[ft$Total_Bilirubin>10] = NA
+ft$Direct_Bilirubin[ft$Direct_Bilirubin>100] = NA
 ft$A_G_Ratio_Albumin_Globulin[which(ft$A_G_Ratio_Albumin_Globulin==0)]=NA
 ft$Absolute_Basophil_Count[which(ft$Absolute_Basophil_Count>10000)]=NA
 ft$Absolute_Eosinophil_Count[which(ft$Absolute_Eosinophil_Count==0)]=NA
@@ -3282,7 +3412,7 @@ ft$Absolute_Monocyte_Count[which(ft$Absolute_Monocyte_Count==0)]=NA
 ft$Absolute_Monocyte_Count[which(ft$Absolute_Monocyte_Count>4000)]=NA
 ft$Absolute_Neutrophil_Count[which(ft$Absolute_Neutrophil_Count==0)] = NA
 ft$Absolute_Neutrophil_Count[which(ft$Absolute_Neutrophil_Count>40000)] = NA
-ft$Albumin[which(ft$Albumin>100)] = NA
+ft$Albumin[which(ft$Albumin>70)] = NA
 ft$ALT_SGPT[which(as.numeric(ft$ALT_SGPT)>5000)] = NA
 ft$Alkaline_Phosphatase[which(as.numeric(ft$Alkaline_Phosphatase)>10000)] = NA
 ft$anthropometry.body_fat[which(ft$anthropometry.body_fat==0)] = NA
@@ -3330,6 +3460,7 @@ ft$Hematocrit[which(ft$Hematocrit==0)] = NA
 ft$Platelet_Count[which(ft$Platelet_Count < 10000)] = NA
 ft$Platelet_Count[which(ft$Platelet_Count>1000000)]=NA
 ft$LDL[which(ft$LDL==0)] = NA
+ft$LDL[which(ft$LDL<0)] = NA
 ft$Lymphocytes[which(ft$Lymphocytes==0)] = NA
 ft$LDL_HDL_Ratio[which(ft$LDL_HDL_Ratio == 0)] = NA
 ft$LDL_HDL_Ratio[which(ft$LDL_HDL_Ratio > 100)] = NA
@@ -3383,6 +3514,8 @@ ft$C.Peptide[ft$C.Peptide<0] = NA
 ft$Fasting_Insulin_Level[ft$Fasting_Insulin_Level<0] = NA
 ft$Lymphocytes[ft$Lymphocytes==0] = NA
 ft$AST_SGOT[ft$AST_SGOT>500] = NA
+ft$history_illness.medication_currently_status[ft$history_illness.medication_currently_status=="NA"] = NA
+ft$history_illness.medication_currently_status = tolower(ft$history_illness.medication_currently_status)
 ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="currently_currently_married"] = "currently_married"
 ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="Married"] = "currently_married"
 ft$socio_demographics.marital_status[ft$socio_demographics.marital_status=="MARRIED"] = "currently_married"
@@ -3415,8 +3548,10 @@ ft$smoking_tobacco_alcohol.smoking_status[which(ft$smoking_tobacco_alcohol.smoki
 
 
 # removing empty rows -----------------------------------------------------
-ft = ft[-which(rowSums(is.na(ft))>115 & ft$center != "CBRI"),]
-
+ft = ft[-which(rowSums(is.na(ft))>120 & ft$center != "CBRI"),]
+ft = ft[-which(ft$LocalID %in% c("AIIM/J/018082", "AIIM/J/018083", "AIIM/J/018084", "AIIM/J/018085", "AIIM/J/027059")),]
+ft = ft[-which(ft$LocalID %in% c("AIIM/J/027055")),]
+ft = ft[-which(ft$LocalID %in% c("CCMB/C/040124")),]
 # check states at this point ----------------------------------------------
 
 #whether all LocalIDs are in the correct state
@@ -3483,6 +3618,8 @@ resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="rajbanshi"
 resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="saryuparin brahmin"] = "saryuparin_brahmin"
 resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="sikh"] = "sikhs"
 resolveddups$name_dob_1.ethnicity[resolveddups$name_dob_1.ethnicity=="vaidiki brahmin"] = "vaidiki_brahmin"
+
+resolveddups$history_illness.medication_currently_status[resolveddups$history_illness.medication_currently_status=="NA"] = NA
 resolveddups<-resolveddups[names(merged_seq_samples1)]
 
 resolveddups$FBS_Fasting_Blood_Glucose = as.numeric(resolveddups$FBS_Fasting_Blood_Glucose)
@@ -3594,7 +3731,9 @@ resolveddups$age = as.numeric(resolveddups$age)
 resolveddups$age_withBBC = as.numeric(resolveddups$age_withBBC)
 resolveddups = resolveddups[-which(rowSums(is.na(resolveddups))>90),]
 
-
+resolveddups$Indirect_Bilirubin[resolveddups$Indirect_Bilirubin<0] = NA
+resolveddups$anthropometry.body_fat[resolveddups$center=="SKIM"] = NA
+resolveddups$history_illness.name_medication = gsub('\n', ',', resolveddups$history_illness.name_medication)
 merged_seq_samples1 = rbind(merged_seq_samples1, resolveddups)
 
 # How did these samples go missing? ---------------------------------------
@@ -3661,10 +3800,12 @@ merged_seq_samples1$name_dob_1.ethnicity = ifelse(is.na(merged_seq_samples1$name
 
 # removing BBC missing samples --------------------------------------------
 
-merged_seq_samples1 = merged_seq_samples1[-which(rowSums(is.na(merged_seq_samples1))>115),]
+merged_seq_samples1 = merged_seq_samples1[-which(rowSums(is.na(merged_seq_samples1))>=115 & merged_seq_samples1$center=="IBSD"),]
 merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="ILSB/H/000093"),]
 merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="ILSB/H/000472"),]
 merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="SKIM/M/000356"),]
+merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="CCMB/C/040044"),]
+merged_seq_samples1 = merged_seq_samples1[-which(merged_seq_samples1$LocalID=="CCMB/C/070143"),]
 
 merged_seq_samples1$name_dob_1.gender = tolower(merged_seq_samples1$name_dob_1.gender)
 
@@ -3694,58 +3835,13 @@ totrackdown = seq_samples[!(seq_samples$LocalID %in% merged_seq_samples1$LocalID
 totrackdownold = read_excel("to track down May 24.xlsx")
 
 
-# Ethnicity coding --------------------------------------------------------
-
-
-# Removing Hakkipikki-Halakki ---------------------------------------------
-merged_seq_samples1 <- subset(merged_seq_samples1, name_dob_1.ethnicity != "hakkipikki")
-merged_seq_samples1 <- subset(merged_seq_samples1, name_dob_1.ethnicity != "halakki")
-
-# Take top 25 variables ---------------------------------------------------
-
-empty_cols = sort(colSums(is.na(merged_seq_samples1)|merged_seq_samples1==""))
-empty_cols = data.frame(Column = names(empty_cols), missing_values = empty_cols)
-rownames(empty_cols)=NULL
-empty_cols$missing_values_perc = (empty_cols$missing_values/length(merged_seq_samples1$LocalID))*100
-
-empty_cols <- empty_cols %>% mutate(across(c('missing_values_perc'), round, 2))
-
-empty_cols$label = NA
-empty_cols$label[empty_cols$Column %in% colnames(odk_main)] = "ODK"
-empty_cols$label[empty_cols$Column == "anthropometry.waist_cir"] = "ODK"
-empty_cols$label[empty_cols$Column == "region"] = "meta"
-empty_cols$label[empty_cols$Column == "center"] = "ODK"
-empty_cols$label[empty_cols$Column == "BMI"] = "ODK"
-empty_cols$label[empty_cols$Column == "age"] = "ODK"
-empty_cols$label[empty_cols$Column == "age_withBBC"] = "ODK"
-empty_cols$label[empty_cols$Column == "LocalID"] = "Key"
-empty_cols$label[empty_cols$Column == "SeqID"] = "Key"
-empty_cols$label[!(empty_cols$label %in% c("Key", "ODK", "meta"))] = "BBC"
-
-
-merged_seq_samples1_cp = merged_seq_samples1
-
-odk_variables = empty_cols[empty_cols$label %in% c("Key","ODK","meta"),]
-odk_variables = subset(odk_variables, select = Column)
-odk_variables = as.list(odk_variables)
-merged_seq_samples1_01 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% odk_variables$Column]
-
-BBC_variables = empty_cols[empty_cols$label %in% c("BBC"),]
-BBC_variables = BBC_variables[1:25,]
-BBC_variables = as.list(subset(BBC_variables, select = Column))
-BBC_variables_to_add = c("RBS", "FBS_Fasting_Blood_Glucose")
-BBC_variables$Column = append(BBC_variables$Column, BBC_variables_to_add)
-merged_seq_samples1_02 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% BBC_variables$Column]
-
-merged_seq_samples_joined = cbind(merged_seq_samples1_01, merged_seq_samples1_02)
-
-
 # recoded ethnicities -----------------------------------------------------
 b = read.table("populations.txt", header=T,stringsAsFactors = F, sep="\t")
+b$Population[b$Population == "Kol"] = "koli (tribe)"
 #b = trimws(b)
-popn_info = merged_seq_samples_joined[,c('LocalID', 'SeqID', 'name_dob_1.ethnicity', 'name_dob_1.state', 'region')]
+popn_info = merged_seq_samples1[,c('LocalID', 'SeqID', 'name_dob_1.ethnicity', 'name_dob_1.state', 'region')]
 b$Population = tolower(b$Population)
-
+b$Social.Rank[b$Social.Rank=="OBC*"] = "OBC"
 popn_info_merged = merge(popn_info, b, by.x=3, by.y=1,sort=F,all.x=T)
 popn_info_merged$region[which(popn_info_merged$region == "Unknown")] = 
   popn_info_merged$Region[which(popn_info_merged$region == 'Unknown')]
@@ -3770,13 +3866,17 @@ popn_info_merged$Region[popn_info_merged$name_dob_1.state=="jharkhand"] = "East"
 popn_info_merged = unique(popn_info_merged)
 
 popn_info_merged$regioncode = "N"
-popn_info_merged$regioncode[which(popn_info_merged$region == "South")] = "S"
-popn_info_merged$regioncode[which(popn_info_merged$region == "West")] = "W"
-popn_info_merged$regioncode[which(popn_info_merged$region == "East")] = "E"
-popn_info_merged$regioncode[which(popn_info_merged$region == "North-East")] = "NE"
-popn_info_merged$regioncode[which(popn_info_merged$region == "Central")] = "C"
+popn_info_merged$regioncode[which(popn_info_merged$Region == "South")] = "S"
+popn_info_merged$regioncode[which(popn_info_merged$Region == "West")] = "W"
+popn_info_merged$regioncode[which(popn_info_merged$Region == "East")] = "E"
+popn_info_merged$regioncode[which(popn_info_merged$Region == "North-East")] = "NE"
+popn_info_merged$regioncode[which(popn_info_merged$Region == "Central")] = "C"
 
-popn_info_merged$ID = paste0(popn_info_merged$regioncode, "-", popn_info_merged$Language.Family, "-", popn_info_merged$Region)
+popn_info_merged$Language.Family[popn_info_merged$name_dob_1.ethnicity=="kudmi_mahato"] = "IE"
+popn_info_merged$Language.Family[popn_info_merged$name_dob_1.ethnicity=="hajong"] = "TB"
+popn_info_merged$Language.Family[popn_info_merged$name_dob_1.ethnicity=="rabha"] = "IE"
+
+popn_info_merged$ID = paste0(popn_info_merged$regioncode, "-", popn_info_merged$Language.Family, "-", popn_info_merged$Social.Rank)
 
 ethnicities = unique(popn_info_merged$name_dob_1.ethnicity)
 ethmap = data.frame(ethnicities, 1:length(ethnicities))
@@ -3792,23 +3892,195 @@ for(id in unique(popn_info_merged$ID)){
   popn_info_merged$Mapping[rowstoedit] = newids
 }
 
+#write.table(popn_info_merged, file="seqid_mappings.txt", quote=F,row.names=F,sep="\t")
+mappingslist_old = read.table("seqid_mappings_touse.txt", sep = '\t', header = T)
+
+#merged_seq_samples1$ethnicity_mapping[merged_seq_samples1$SeqID %in% mappingslist$SeqID] <- mappingslist$Mapping[match(merged_seq_samples1$SeqID[merged_seq_samples1$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
+
+popn_info_merged$mappingold[popn_info_merged$SeqID %in% mappingslist_old$SeqID] = mappingslist_old$Mapping[match(popn_info_merged$SeqID[popn_info_merged$SeqID %in% mappingslist_old$SeqID], mappingslist_old$SeqID)] 
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="adikarnataka"] = "S-DR-SC-14"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="ansari_sunni"] = "E-IE-Religious_Group-46"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="balmiki"] = "N-IE-SC-18"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="banjara" & is.na(popn_info_merged$mappingold)] = "C-IE-SC-50"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="chenchu"] = "S-DR-ST-31"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="gond"] = "E-DR-ST-55"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="gujjar" & is.na(popn_info_merged$mappingold)] = "N-IE-ST-7"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="gujjar_and_bakkarwal"] = "N-IE-ST-75"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="hajong"] = "NE-TB-ST-62"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="hakkipikki"] = "S-DR-ST-82"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="halakki"] = "S-DR-OBC-83"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="jats"] = "N-IE-OBC-8"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="juang"] = "E-AA-ST-57"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="kanyakubj_brahmin" & is.na(popn_info_merged$mappingold)] = "N-IE-General-20"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="kashmiri_muslim"] = "N-IE-Religious_Group-74"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="kashmiri_pandit"] = "N-IE-General-76"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="khatri_pb"] = "N-IE-General-45"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="koli (tribe)"] = "C-IE-ST-80"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="kudmi_mahato"] = "E-IE-OBC-67"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="lingayath"] = "S-DR-OBC-12"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="maithili_brahmin" & is.na(popn_info_merged$mappingold)] = "E-IE-General-42"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="mala"] = "S-DR-SC-25"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="meitei"] = "NE-TB-OBC-40"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="namasudra"] = "E-IE-SC-56"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="oriya_brahmin"] = "E-IE-General-54"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="padayachi"] = "S-DR-OBC-29"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="patidar"] = "W-IE-General-34"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="rabha"] = "NE-IE-ST-60"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="rahri_brahmin"] = "E-IE-General-65"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="ravidas" & is.na(popn_info_merged$mappingold)] = "E-IE-SC-81"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="santhal"] = "E-AA-ST-63"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="siddi"] = "W-IE-Admixed-36"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="sikhs"] = "N-IE-Religious_Group-48"
+popn_info_merged$mappingold[popn_info_merged$name_dob_1.ethnicity=="thakur" & is.na(popn_info_merged$mappingold)] = "C-IE-General-23"
+popn_info_merged$mappingold[popn_info_merged$LocalID=="CBRI/B/075044"] = "C-IE-General-21"
+
 write.table(popn_info_merged, file="seqid_mappings.txt", quote=F,row.names=F,sep="\t")
-
 mappingslist = read.table("seqid_mappings.txt", sep = '\t', header = T)
-merged_seq_samples_joined$ethnicity_mapping[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID] <- mappingslist$Mapping[match(merged_seq_samples_joined$SeqID[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
-#colnames(merged_seq_samples_joined_cp1)[colnames(merged_seq_samples_joined_cp1) == "mapping"] = "ethnicity_mapping"
+merged_seq_samples1$ethnicity_mapping[merged_seq_samples1$SeqID %in% mappingslist$SeqID] <- mappingslist$mappingold[match(merged_seq_samples1$SeqID[merged_seq_samples1$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
+#colnames(merged_seq_samples1_cp1)[colnames(merged_seq_samples1_cp1) == "mapping"] = "ethnicity_mapping"
 
 
-merged_seq_samples_joined$region_list[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID] <- mappingslist$region[match(merged_seq_samples_joined$SeqID[merged_seq_samples_joined$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
+merged_seq_samples1$region_list[merged_seq_samples1$SeqID %in% mappingslist$SeqID] <- mappingslist$region[match(merged_seq_samples1$SeqID[merged_seq_samples1$SeqID %in% mappingslist$SeqID], mappingslist$SeqID)]
 
-region_check = merged_seq_samples_joined[merged_seq_samples_joined$region != merged_seq_samples_joined$region_list,]
-region_check = subset(merged_seq_samples_joined, select = c("SeqID", "name_dob_1.ethnicity", "name_dob_1.state", "region", "region_list"))
+region_check = merged_seq_samples1[merged_seq_samples1$region != merged_seq_samples1$region_list,]
+region_check = subset(merged_seq_samples1, select = c("SeqID", "name_dob_1.ethnicity", "name_dob_1.state", "region", "region_list"))
 region_check = region_check[region_check$region != region_check$region_list,]
 region_check = subset(region_check, region!="Unknown")
 #region_check = subset(region_check, region_list!="Northeast")
 
-merged_seq_samples_joined = subset(merged_seq_samples_joined, select = -region)
-names(merged_seq_samples_joined)[names(merged_seq_samples_joined) == "region_list"] = "region"
+merged_seq_samples1 = subset(merged_seq_samples1, select = -region)
+names(merged_seq_samples1)[names(merged_seq_samples1) == "region_list"] = "region"
+
+merged_seq_samples1$name_dob_1.mother_tongue = trimws(tolower(merged_seq_samples1$name_dob_1.mother_tongue))
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="bangala namasudra"] = "bengali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hi hindi"] = "hindi"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindhi"] = "hindi"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="santhal"] = "santhali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="sathali"] = "santhali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="sauthali"] = "santhali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="santali"] = "santhali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="odiia"] = "odia"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="maithaly"] = "maithili"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindi movie"] = "hindi"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindi to"] = "hindi"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="baiga language"] = "baiga"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="dogri w"] = "dogri"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gujarati v"] = "gujarati"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gujrati"] = "gujarati"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="hindi  maithili"] = "hindi maithili"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="kashmirir"] = "kashmiri"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="marw"] = "marwari"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="kann"] = "kannada"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="mann"] = "kannada"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="marathi k"] = "marathi"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gurhwali"] = "garhwali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="gharwale"] = "garhwali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="ghrwale"] = "garhwali"
+merged_seq_samples1$name_dob_1.mother_tongue[merged_seq_samples1$name_dob_1.mother_tongue=="marwari and hindi"] = "hindi and marwari"
+
+
+parse_and_convert_date1 <- function(date_str) {
+  if (grepl("^\\d{4}-\\d{2}-\\d{2}$", date_str)) {
+    # If it's in "yyyy-mm-dd" format, just return it
+    return(date_str)
+  } else if (grepl("^\\d{2}-\\d{2}-\\d{4}$", date_str)) {
+    # If it's in "dd-mm-yyyy" or "mm-dd-yyyy" format, try both and check validity
+    parsed_date_dmy <- dmy(date_str)
+    parsed_date_mdy <- mdy(date_str)
+    
+    if (!is.na(parsed_date_dmy) && !is.na(parsed_date_mdy)) {
+      # Both are valid, you need to choose a strategy here
+      # For example, prefer one format over the other
+      return(as.character(parsed_date_dmy, format = "%Y-%m-%d"))
+    } else if (!is.na(parsed_date_dmy)) {
+      return(as.character(parsed_date_dmy, format = "%Y-%m-%d"))
+    } else if (!is.na(parsed_date_mdy)) {
+      return(as.character(parsed_date_mdy, format = "%Y-%m-%d"))
+    } else {
+      return(date_str)  # Date couldn't be parsed
+    }
+  } else if (grepl("^\\d{1}-\\d{2}-\\d{4}$", date_str)) {
+    # If it's in "m-dd-yyyy" format, convert it to "yyyy-mm-dd"
+    parsed_date <- mdy(date_str)
+    return(as.character(parsed_date, format = "%Y-%m-%d"))
+  } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{4}$", date_str)) {
+    # If it's in "dd-bbb-yyyy" format, convert it to "yyyy-mm-dd"
+    parsed_date <- dmy(date_str)
+    return(as.character(parsed_date, format = "%Y-%m-%d"))
+  } else if (grepl("^\\d{2}-[A-Za-z]{3}-\\d{2}$", date_str)) {
+    # If it's in "dd-bbb-yy" format, convert it to "yyyy-mm-dd"
+    parsed_date <- dmy(date_str)
+    return(as.character(parsed_date, format = "%Y-%m-%d"))
+  } else if (grepl("^[0-9]{10}$", date_str)) {
+    # If it's a Unix timestamp (with optional milliseconds)
+    parsed_date <- as.POSIXct(as.numeric(date_str), origin = "1970-01-01", tz = "UTC")
+    return(as.character(format(parsed_date, "%Y-%m-%d")))
+  } else {
+    return(date_str)  # Date couldn't be parsed
+  }
+}
+
+# Standardize the date format
+merged_seq_samples1 <- merged_seq_samples1 %>%
+  mutate(introduction_1.examination_date = sapply(introduction_1.examination_date, parse_and_convert_date1))
+
+merged_seq_samples1$introduction_1.examination_date <- sapply(merged_seq_samples1$introduction_1.examination_date, function(date) {
+  if (nchar(date) == 5 && grepl("^[0-9]+$", date)) {  # Check if string has 5 characters and all characters are numeric
+    formatted_date <- as.Date(as.numeric(date), origin = "1899-12-30")
+    return(format(formatted_date, "%Y-%m-%d"))
+  } else {
+    return(date)
+  }
+})
+
+merged_seq_samples1$introduction_1.examination_date[merged_seq_samples1$introduction_1.examination_date=="Dec 2, 2020"] = "2020-12-02"
+
+merged_seq_samples1$anthropometry.waist_cir[merged_seq_samples1$anthropometry.waist_cir<20] = NA
+# Take top 25 variables ---------------------------------------------------
+
+empty_cols = sort(colSums(is.na(merged_seq_samples1)|merged_seq_samples1==""))
+empty_cols = data.frame(Column = names(empty_cols), missing_values = empty_cols)
+rownames(empty_cols)=NULL
+empty_cols$missing_values_perc = (empty_cols$missing_values/length(merged_seq_samples1$LocalID))*100
+
+empty_cols <- empty_cols %>% mutate(across(c('missing_values_perc'), round, 2))
+
+empty_cols$label = NA
+empty_cols$label[empty_cols$Column %in% colnames(odk_main)] = "ODK"
+empty_cols$label[empty_cols$Column == "anthropometry.waist_cir"] = "ODK"
+empty_cols$label[empty_cols$Column == "region"] = "meta"
+empty_cols$label[empty_cols$Column == "center"] = "ODK"
+empty_cols$label[empty_cols$Column == "BMI"] = "ODK"
+empty_cols$label[empty_cols$Column == "age"] = "ODK"
+empty_cols$label[empty_cols$Column == "age_withBBC"] = "ODK"
+empty_cols$label[empty_cols$Column == "ethnicity_mapping"] = "ODK"
+empty_cols$label[empty_cols$Column == "LocalID"] = "Key"
+empty_cols$label[empty_cols$Column == "SeqID"] = "Key"
+empty_cols$label[!(empty_cols$label %in% c("Key", "ODK", "meta"))] = "BBC"
+
+
+merged_seq_samples1_cp = merged_seq_samples1
+
+odk_variables = empty_cols[empty_cols$label %in% c("Key","ODK","meta"),]
+odk_variables = subset(odk_variables, select = Column)
+odk_variables = as.list(odk_variables)
+merged_seq_samples1_01 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% odk_variables$Column]
+
+BBC_variables = empty_cols[empty_cols$label %in% c("BBC"),]
+BBC_variables = BBC_variables[1:25,]
+BBC_variables = as.list(subset(BBC_variables, select = Column))
+BBC_variables_to_add = c("RBS", "FBS_Fasting_Blood_Glucose")
+BBC_variables$Column = append(BBC_variables$Column, BBC_variables_to_add)
+merged_seq_samples1_02 = merged_seq_samples1_cp[, names(merged_seq_samples1_cp) %in% BBC_variables$Column]
+
+# BBC_2 = append(BBC_variables$Column, "SeqID")
+# test1_sub = test1[, names(test1) %in% BBC_variables$Column]
+merged_seq_samples_joined = cbind(merged_seq_samples1_01, merged_seq_samples1_02)
+
+# Removing Hakkipikki-Halakki ---------------------------------------------
+merged_seq_samples_joined <- subset(merged_seq_samples_joined, name_dob_1.ethnicity != "hakkipikki")
+merged_seq_samples_joined <- subset(merged_seq_samples_joined, name_dob_1.ethnicity != "halakki")
+
 
 # Export files (remove Age!) ------------------------------------------------------------
 
@@ -3816,14 +4088,18 @@ finalsamplelist = read.table("GI_QCd_sample_ids.txt")
 
 merged_seq_samples_joined_cp1 = merged_seq_samples_joined[merged_seq_samples_joined$SeqID %in% finalsamplelist$V1,]
 merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -LocalID)
+merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -name_dob_1.village)
+
 merged_seq_samples_joined_cp1 = merged_seq_samples_joined_cp1 %>% dplyr::select("SeqID", everything())
-write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_9385_Jul23.txt", sep = '\t', row.names = F)
+write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_9385_Aug2.txt", sep = '\t', row.names = F)
+
 merged_seq_samples_joined_cp1 = subset(merged_seq_samples_joined_cp1, select = -name_dob_1.ethnicity)
-write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_9385_Jul23_coded.txt", sep = '\t', row.names = F)
+
+write.table(merged_seq_samples_joined_cp1, "GI_SequencedSamples_9385_Aug2_coded.txt", sep = '\t', row.names = F)
 
 # Dist by center and ethnicity -----------------------------------------------
 merge_num_new = dplyr::select_if(merged_seq_samples_joined_cp1, is.numeric)
-pdf("distbycenter_top25_newlist_coded.pdf", width = 11)
+pdf("distbycenter_top25_newlist_coded_jul30.pdf", width = 11)
 variables = colnames(merge_num_new)
 for(V in variables){
   if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
@@ -3833,7 +4109,7 @@ for(V in variables){
 dev.off()
 
 # plotting boxplots against ethnicity -------------------------------------
-pdf("distbyethnicity_top25_newlist_coded.pdf", width = 11)
+pdf("distbyethnicity_top25_newlist_coded_jul30.pdf", width = 11)
 variables = colnames(merge_num_new)
 for(V in variables){
   if(length(unique(as.numeric(merge_num_new[,V]))) == 1){next;}
@@ -3887,11 +4163,16 @@ for (i in 1:(ncol(merge_num_new))) {
 # Close the PDF device
 dev.off()
 
+pdf("missingness_variables_bycenter_Jul23.pdf", width = 10, height = 20)
+library(naniar)
+gg_miss_fct(x = merged_seq_samples_joined_cp1, fct = center)+scale_fill_gradientn(colors = c("navy","gold", "white"))
+dev.off()
 # putting values back in ft -----------------------------------------------
 
 merged_seq_samples1_cp_cp = merged_seq_samples1
 #merged_seq_samples1_cp_cp = subset(merged_seq_samples1_cp_cp, select = -BMI)
 merged_seq_samples1_cp_cp = subset(merged_seq_samples1_cp_cp, select = -SeqID)
+merged_seq_samples1_cp_cp = subset(merged_seq_samples1_cp_cp, select = -ethnicity_mapping)
 #merged_seq_samples1_cp_cp$name_dob_1.gender = merged_seq_samples1_cp_cp$g
 new_cols = setdiff(colnames(ft), colnames(merged_seq_samples1_cp_cp))
 library(dplyr)
@@ -4045,7 +4326,8 @@ resolved_dups = subset(resolved_dups, select = -Transferrin)
 resolved_dups$anthropometry.height = as.numeric(resolved_dups$anthropometry.height)
 resolved_dups$anthropometry.weight = as.numeric(resolved_dups$anthropometry.weight)
 resolved_dups$BMI = resolved_dups$anthropometry.weight/((resolved_dups$anthropometry.height/100)^2)
-
+resolved_dups$Indirect_Bilirubin[as.numeric(resolved_dups$Indirect_Bilirubin)<0] = NA
+resolved_dups$anthropometry.body_fat[resolved_dups$center=="SKIM"] = NA
 resolved_dups<-resolved_dups[names(ft_cp)]
 
 ft_cp = rbind(ft_cp, resolved_dups)
@@ -4062,6 +4344,7 @@ ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kuruma"] = "kuruman"
 ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="kurmi mahato"] = "kudmi_mahato"
 ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="bhil meena"] = "bhil_meena"
 ft_cp$name_dob_1.ethnicity[ft_cp$name_dob_1.ethnicity=="agrawal"] = "aggarwal"
+
 
 # Tracking missing samples ------------------------------------------------
 
@@ -4086,7 +4369,7 @@ ft = subset(ft, select = -nonmissing)
 
 # writing file ------------------------------------------------------------
 
-write.table(ft_cp, "20000freeze_Jul16.txt", sep = '\t', row.names = F)
+write.table(ft_cp, "20000freeze_Aug2.txt", sep = '\t', row.names = F)
 
 
 # checking which samples are not there ------------------------------------
