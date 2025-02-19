@@ -1,0 +1,859 @@
+filtered_data$tribe[filtered_data$Popn_Status %in% c("Indo-European Tribe", "Dravidian Tribe", "Austro-Asiatic Tribe", "Tibeto-Burman Tribe", "Outgroup")] = "Tribe"
+filtered_data$tribe[filtered_data$Popn_Status %in% c("Indo-European Non-Tribe", "Dravidian Non-Tribe", "Austro-Asiatic Non-Tribe", "Tibeto-Burman Non-Tribe")] = 'Non-Tribe'
+filtered_data$tribe <- factor(filtered_data$tribe, levels = c("Non-Tribe", "Tribe"), labels = c("Non-Tribe", "Tribe"))
+
+
+# prevalence - tribe/nontribe ---------------------------------------------
+
+
+chol_summary <- filtered_data[!is.na(filtered_data$Cholesterol),] %>%
+  mutate(Chol_Status = case_when(
+    is.na(Cholesterol) ~ "NA",
+    Cholesterol <= 200 ~ "normal",
+    Cholesterol > 200 ~ "high (> 200)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, Chol_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+chol_summary$percentage = round((chol_summary$Count/chol_summary$total_count)*100, 3)
+
+
+ggplot(chol_summary[chol_summary$Chol_Status == "high (> 200)" & !is.na(chol_summary$age_group) & !is.na(chol_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Cholesterol (> 200)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+HDL_summary <- filtered_data[!is.na(filtered_data$HDL),] %>%
+  mutate(HDL_Status = case_when(
+    is.na(HDL) ~ "NA",
+    HDL >= 50 ~ "normal",
+    HDL < 50 ~ "low (<50)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, HDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+HDL_summary$percentage = round((HDL_summary$Count/HDL_summary$total_count)*100, 3)
+
+
+ggplot(HDL_summary[HDL_summary$HDL_Status == "low (<50)" & !is.na(HDL_summary$age_group) & !is.na(HDL_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of Low HDL (<50)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+tg_summary <- filtered_data[!is.na(filtered_data$Triglycerides),] %>%
+  mutate(TG_Status = case_when(
+    is.na(Triglycerides) ~ "NA",
+    Triglycerides <= 150 ~ "normal",
+    Triglycerides > 150 ~ "high (> 150)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, TG_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+tg_summary$percentage = round((tg_summary$Count/tg_summary$total_count)*100, 3)
+
+
+ggplot(tg_summary[tg_summary$TG_Status == "high (> 150)" & !is.na(tg_summary$age_group) & !is.na(tg_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Triglycerides (> 150)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+ldl_summary <- filtered_data[!is.na(filtered_data$LDL),] %>%
+  mutate(LDL_Status = case_when(
+    is.na(LDL) ~ "NA",
+    LDL <= 120 ~ "normal",
+    LDL > 120 ~ "high (> 120)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, LDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+ldl_summary$percentage = round((ldl_summary$Count/ldl_summary$total_count)*100, 3)
+
+
+ggplot(ldl_summary[ldl_summary$LDL_Status == "high (> 120)" & !is.na(ldl_summary$age_group) & !is.na(ldl_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High LDL (> 120)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+
+# ancestry ----------------------------------------------------------------
+
+ancestry_colors <- c(
+  "AA" = "steelblue3", 
+  "IE" = "maroon4", 
+  "DR" = "mediumorchid3", 
+  "TB" = "palegreen4",
+  "CAO" = "black"
+)
+
+
+# Create a named vector of labels with bold formatting
+custom_labels <- setNames(
+  paste0("<span style='color:", ancestry_colors[filtered_data$ancestry], "'>",
+         filtered_data$ethnicity_mapping, "</span>"),
+  filtered_data$ethnicity_mapping
+)
+
+
+
+chol_summary <- filtered_data[!is.na(filtered_data$Cholesterol),] %>%
+  mutate(Chol_Status = case_when(
+    is.na(Cholesterol) ~ "NA",
+    Cholesterol <= 200 ~ "normal",
+    Cholesterol > 200 ~ "high (> 200)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, Chol_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+chol_summary$percentage = round((chol_summary$Count/chol_summary$total_count)*100, 3)
+
+
+ggplot(chol_summary[chol_summary$Chol_Status == "high (> 200)" & !is.na(chol_summary$age_group) & !is.na(chol_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Cholesterol (> 200)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+HDL_summary <- filtered_data[!is.na(filtered_data$HDL),] %>%
+  mutate(HDL_Status = case_when(
+    is.na(HDL) ~ "NA",
+    HDL >= 50 ~ "normal",
+    HDL < 50 ~ "low (<50)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, HDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+HDL_summary$percentage = round((HDL_summary$Count/HDL_summary$total_count)*100, 3)
+
+
+ggplot(HDL_summary[HDL_summary$HDL_Status == "low (<50)" & !is.na(HDL_summary$age_group) & !is.na(HDL_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of Low HDL (<50)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+tg_summary <- filtered_data[!is.na(filtered_data$Triglycerides),] %>%
+  mutate(TG_Status = case_when(
+    is.na(Triglycerides) ~ "NA",
+    Triglycerides <= 150 ~ "normal",
+    Triglycerides > 150 ~ "high (> 150)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, TG_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+tg_summary$percentage = round((tg_summary$Count/tg_summary$total_count)*100, 3)
+
+
+ggplot(tg_summary[tg_summary$TG_Status == "high (> 150)" & !is.na(tg_summary$age_group) & !is.na(tg_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Triglycerides (> 150)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+ldl_summary <- filtered_data[!is.na(filtered_data$LDL),] %>%
+  mutate(LDL_Status = case_when(
+    is.na(LDL) ~ "NA",
+    LDL <= 120 ~ "normal",
+    LDL > 120 ~ "high (> 120)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, LDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+ldl_summary$percentage = round((ldl_summary$Count/ldl_summary$total_count)*100, 3)
+
+
+ggplot(ldl_summary[ldl_summary$LDL_Status == "high (> 120)" & !is.na(ldl_summary$age_group) & !is.na(ldl_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High LDL (> 120)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+
+# prevalence without medication-tribe/nontribe -------------------------------------------
+
+chol_summary <- filtered_data[!is.na(filtered_data$Cholesterol) & filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(Chol_Status = case_when(
+    is.na(Cholesterol) ~ "NA",
+    Cholesterol <= 200 ~ "normal",
+    Cholesterol > 200 ~ "high (> 200)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, Chol_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+chol_summary$percentage = round((chol_summary$Count/chol_summary$total_count)*100, 3)
+
+
+ggplot(chol_summary[chol_summary$Chol_Status == "high (> 200)" & !is.na(chol_summary$age_group) & !is.na(chol_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Cholesterol (> 200)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+HDL_summary <- filtered_data[!is.na(filtered_data$HDL) & filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(HDL_Status = case_when(
+    is.na(HDL) ~ "NA",
+    HDL >= 50 ~ "normal",
+    HDL < 50 ~ "low (<50)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, HDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+HDL_summary$percentage = round((HDL_summary$Count/HDL_summary$total_count)*100, 3)
+
+
+ggplot(HDL_summary[HDL_summary$HDL_Status == "low (<50)" & !is.na(HDL_summary$age_group) & !is.na(HDL_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of Low HDL (<50)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+tg_summary <- filtered_data[!is.na(filtered_data$Triglycerides) & filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(TG_Status = case_when(
+    is.na(Triglycerides) ~ "NA",
+    Triglycerides <= 150 ~ "normal",
+    Triglycerides > 150 ~ "high (> 150)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, TG_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+tg_summary$percentage = round((tg_summary$Count/tg_summary$total_count)*100, 3)
+
+
+ggplot(tg_summary[tg_summary$TG_Status == "high (> 150)" & !is.na(tg_summary$age_group) & !is.na(tg_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Triglycerides (> 150)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+ldl_summary <- filtered_data[!is.na(filtered_data$LDL) & filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(LDL_Status = case_when(
+    is.na(LDL) ~ "NA",
+    LDL <= 120 ~ "normal",
+    LDL > 120 ~ "high (> 120)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, tribe, LDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, tribe) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+ldl_summary$percentage = round((ldl_summary$Count/ldl_summary$total_count)*100, 3)
+
+
+ggplot(ldl_summary[ldl_summary$LDL_Status == "high (> 120)" & !is.na(ldl_summary$age_group) & !is.na(ldl_summary$tribe), ], 
+       aes(x = age_group, y = percentage, 
+           color = tribe, 
+           group = interaction(name_dob_1.gender, tribe), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High LDL (> 120)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Tribe Status",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = c("Non-Tribe" = "dodgerblue2", "Tribe" = "darkorange"), name = "Tribe Status")+  # Set separate colors for each ancestry
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+
+# prevalence without medication - ancestry --------------------------------
+
+chol_summary <- filtered_data[!is.na(filtered_data$Cholesterol) & filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(Chol_Status = case_when(
+    is.na(Cholesterol) ~ "NA",
+    Cholesterol <= 200 ~ "normal",
+    Cholesterol > 200 ~ "high (> 200)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, Chol_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+chol_summary$percentage = round((chol_summary$Count/chol_summary$total_count)*100, 3)
+
+
+ggplot(chol_summary[chol_summary$Chol_Status == "high (> 200)" & !is.na(chol_summary$age_group) & !is.na(chol_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Cholesterol (> 200)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+HDL_summary <- filtered_data[!is.na(filtered_data$HDL) & filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(HDL_Status = case_when(
+    is.na(HDL) ~ "NA",
+    HDL >= 50 ~ "normal",
+    HDL < 50 ~ "low (<50)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, HDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+HDL_summary$percentage = round((HDL_summary$Count/HDL_summary$total_count)*100, 3)
+
+
+ggplot(HDL_summary[HDL_summary$HDL_Status == "low (<50)" & !is.na(HDL_summary$age_group) & !is.na(HDL_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of Low HDL (<50)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+tg_summary <- filtered_data[!is.na(filtered_data$Triglycerides) & filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(TG_Status = case_when(
+    is.na(Triglycerides) ~ "NA",
+    Triglycerides <= 150 ~ "normal",
+    Triglycerides > 150 ~ "high (> 150)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, TG_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+tg_summary$percentage = round((tg_summary$Count/tg_summary$total_count)*100, 3)
+
+
+ggplot(tg_summary[tg_summary$TG_Status == "high (> 150)" & !is.na(tg_summary$age_group) & !is.na(tg_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High Triglycerides (> 150)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+ldl_summary <- filtered_data[!is.na(filtered_data$LDL)& filtered_data$history_illness.medication_currently_status=="no",] %>%
+  mutate(LDL_Status = case_when(
+    is.na(LDL) ~ "NA",
+    LDL <= 120 ~ "normal",
+    LDL > 120 ~ "high (> 120)"
+  )) %>%
+  group_by(age_group, name_dob_1.gender, ancestry, LDL_Status) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  group_by(age_group, name_dob_1.gender, ancestry) %>%
+  mutate(total_count = sum(Count, na.rm = TRUE)) %>%
+  ungroup()
+
+ldl_summary$percentage = round((ldl_summary$Count/ldl_summary$total_count)*100, 3)
+
+
+ggplot(ldl_summary[ldl_summary$LDL_Status == "high (> 120)" & !is.na(ldl_summary$age_group) & !is.na(ldl_summary$ancestry), ], 
+       aes(x = age_group, y = percentage, 
+           color = ancestry, 
+           group = interaction(name_dob_1.gender, ancestry), 
+           linetype = name_dob_1.gender)) +
+  geom_line(size = 1) +  # Line plot for high Cholesterol
+  geom_point(aes(size = Count), alpha = 0.4) +  # Add circles with size based on Count
+  labs(
+    title = "Age- and Gender-Specific Prevalence of High LDL (> 120)",
+    x = "Age Group",
+    y = "Percentage",
+    color = "Ancestry",
+    linetype = "Gender",
+    size = "Sample Count"
+  ) +
+  scale_color_manual(values = ancestry_colors, name = "Ancestry") +
+  scale_linetype_manual(values = c("female" = "solid", "male" = "dashed")) +  # Different line types for gender
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    strip.text = element_text(size = 12)
+  )
+
+
+
+# age distribution --------------------------------------------------------
+library(hrbrthemes)
+
+p <- filtered_data %>%
+  ggplot( aes(x=age, fill=name_dob_1.gender)) +
+  geom_histogram( color="#e9ecef", alpha=0.8, position = 'identity') +
+  scale_fill_manual(values=c("palevioletred", "darkseagreen3")) +
+  theme_ipsum() +
+  labs(fill="")
+
+
+age_pyramid <- filtered_data[!is.na(filtered_data$age),] %>%
+  mutate(age = round(age)) %>%  # Round ages to nearest integer
+  count(age, name_dob_1.gender) %>%
+  mutate(n = ifelse(name_dob_1.gender == "male", -n, n))  # Flip male counts
+
+# Plot the age pyramid
+ggplot(age_pyramid, aes(x = age, y = n, fill = name_dob_1.gender)) +
+  geom_bar(stat = "identity", width = 0.9) +  # Bars for each gender
+  coord_flip() +  # Flip x and y to make a pyramid
+  scale_y_continuous(labels = abs) +  # Show positive labels
+  scale_fill_manual(values = c("female" = "palevioletred", "male" = "darkseagreen3")) +
+  labs(title = "Age Pyramid by Gender",
+       x = "Age Group",
+       y = "Number of Samples",
+       fill = "Gender") +
+  theme_minimal()
+
+
+
+# sex distribution --------------------------------------------------------
+
+ggplot(filtered_data[!is.na(filtered_data$ancestry),], aes(x = name_dob_1.gender, fill = name_dob_1.gender)) +
+  geom_bar(stat = "count") +
+  labs(title = "Overall Gender Distribution",
+       x = "Gender", y = "Count", fill = "Gender") +
+  theme_minimal() +
+  geom_text(
+    stat = 'count', 
+    aes(label = ..count..), 
+    position = position_stack(vjust = 0.5), 
+    size = 4, 
+    color = "white"
+  ) +
+  scale_fill_manual(values = c("female" = "palevioletred", "male" = "darkseagreen3")) 
+
+ggplot(filtered_data[!is.na(filtered_data$ancestry),], aes(x = name_dob_1.gender, fill = ancestry)) +
+  geom_bar(stat = "count") +
+  labs(title = "Gender Distribution by Ancestry",
+       x = "Gender", y = "Count", fill = "Ancestry") +
+  theme_minimal() +
+  geom_text(
+    stat = 'count', 
+    aes(label = ..count..), 
+    position = position_stack(vjust = 0.5), 
+    size = 4, 
+    color = "white"
+  ) +
+  scale_fill_manual(values = ancestry_colors) 
+# addictions --------------------------------------------------------------
+
+filtered_data <- filtered_data %>%
+  mutate(smoking_tobacco_alcohol.smoking_status = factor(smoking_tobacco_alcohol.smoking_status, levels = c("never", "past", "current")),
+         smoking_tobacco_alcohol.alcohol_status = factor(smoking_tobacco_alcohol.alcohol_status, levels = c("never", "past", "current")),
+         smoking_tobacco_alcohol.chewing_tobacco_status = factor(smoking_tobacco_alcohol.chewing_tobacco_status, levels = c("never", "past", "current")))
+
+
+# Calculate percentages for each habit
+summary_data <- filtered_data %>%
+  group_by(name_dob_1.gender) %>%
+  summarise(
+    Smoking_Current = sum(smoking_tobacco_alcohol.smoking_status == "current", na.rm = TRUE) / n() * 100,
+    Smoking_Past = sum(smoking_tobacco_alcohol.smoking_status == "past", na.rm = TRUE) / n() * 100,
+    Smoking_Never = sum(smoking_tobacco_alcohol.smoking_status == "never", na.rm = TRUE) / n() * 100,
+    
+    Alcohol_Current = sum(smoking_tobacco_alcohol.alcohol_status == "current", na.rm = TRUE) / n() * 100,
+    Alcohol_Past = sum(smoking_tobacco_alcohol.alcohol_status == "past", na.rm = TRUE) / n() * 100,
+    Alcohol_Never = sum(smoking_tobacco_alcohol.alcohol_status == "never", na.rm = TRUE) / n() * 100,
+    
+    ChewTobacco_Current = sum(smoking_tobacco_alcohol.chewing_tobacco_status == "current", na.rm = TRUE) / n() * 100,
+    ChewTobacco_Past = sum(smoking_tobacco_alcohol.chewing_tobacco_status == "past", na.rm = TRUE) / n() * 100,
+    ChewTobacco_Never = sum(smoking_tobacco_alcohol.chewing_tobacco_status == "never", na.rm = TRUE) / n() * 100
+  ) %>%
+  pivot_longer(-name_dob_1.gender, names_to = "Habit_Status", values_to = "Percentage")
+
+summary_data <- summary_data %>%
+  separate(Habit_Status, into = c("Addiction", "Status"), sep = "_")
+
+# Stacked bar chart
+ggplot(summary_data, aes(x = Addiction, y = Percentage, fill = Status)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Percentage of Smoking, Alcohol, and Chewing Tobacco Use",
+       x = "Addiction", y = "Percentage", fill = "Habit Status") +
+  scale_fill_manual(values=c("Current" = "darksalmon", "Never" = "khaki1", "Past" = "saddlebrown"))+
+  theme_minimal()+facet_wrap(~name_dob_1.gender)
+
+
+
+
+# India map ---------------------------------------------------------------
+
+shp1 <- read_sf("~/Downloads/maps-master/Survey-of-India-Index-Maps/IndiaBoundary/IndiaBoundary.shp")
+# shp2 <- read_sf("~/Downloads/India_Outline_Map/polymap15m_area.shp")
+# india_4326 <- st_transform(shp2, 4326)
+
+
+
+# Modify the state names in shp1 to match test1
+shp1 <- shp1 %>%
+  dplyr::mutate(ST_NM = if_else(ST_NM == 'Uttarakhand', 'Uttaranchal', ST_NM))
+shp1$ST_NM <- tolower(shp1$ST_NM)
+shp1$ST_NM[shp1$ST_NM == "andhra pradesh"] <- "andra_pradesh"
+shp1$ST_NM[shp1$ST_NM == "madhya pradesh"] <- "madya_pradesh"
+shp1$ST_NM[shp1$ST_NM == "himachal pradesh"] <- "himachal_pradesh"
+shp1$ST_NM[shp1$ST_NM == "uttar pradesh"] <- "uttar_pradesh"
+shp1$ST_NM[shp1$ST_NM == "jammu & kashmir"] <- "jammu_kashmir"
+shp1$ST_NM[shp1$ST_NM == "tamil nadu"] <- "tamil_nadu"
+shp1$ST_NM[shp1$ST_NM == "west bengal"] <- "west_bengal"
+shp1$ST_NM[shp1$ST_NM == "odisha"] <- "orissa"
+filtered_data$name_dob_1.state[filtered_data$name_dob_1.state == "new delhi"] <- "delhi"
+
+# Convert state names in test1 to lowercase to match shp1
+filtered_data$name_dob_1.state <- tolower(filtered_data$name_dob_1.state)
+
+
+ldl_summary_state <- filtered_data %>%
+  group_by(name_dob_1.state) %>%
+  summarise(Avg_LDL = mean(LDL, na.rm = TRUE))  # Compute mean LDL
+
+# Step 2: Merge with Shapefile Data
+shp1 <- shp1 %>%
+  left_join(ldl_summary_state, by = c("ST_NM" = "name_dob_1.state"))
+
+# Step 3: Plot the Map
+ggplot(shp1) +
+  geom_sf(aes(fill = Avg_LDL), color = NA, size = 0.1) +  # Fill by LDL levels
+  scale_fill_viridis_c(option = "plasma", na.value = "grey90") +  # Color scale
+  labs(title = "Average LDL Levels by State",
+       fill = "Avg LDL") +
+  theme_minimal()
+
+
+meta_new = readxl::read_xlsx("~/Downloads/metadata_Jan_2025.xlsx")
+meta_new$Code[meta_new$Population=="Siddi"] = "CAO"
+
+summary_df <- meta_new %>%
+  select(Population, Code, Tribe_Shape, Colour_Primary_Residence, Colour_Physiography, Colour_Linguistic_Group, Colour_Admixture_Cluster, lat, long) %>%  # Select relevant columns
+  distinct()
+
+summary_df$lat[summary_df$Code=="CAO"] = 21.13292
+summary_df$long[summary_df$Code=="CAO"] = 70.78436
+
+coords = subset(summary_df, select = c("long", "lat"))
+data <- st_as_sf(coords, coords = c("long", "lat"), crs = 4326)
+
+# Compute average LDL by ethnicity
+ldl_summary_eth <- filtered_data %>%
+  group_by(ethnicity_mapping) %>%
+  summarise(Avg_LDL = mean(LDL, na.rm = TRUE))  # Compute mean LDL
+
+# Merge LDL data by ethnicity into the coordinates
+data$Avg_LDL <- ldl_summary_eth$Avg_LDL
+data$ethnicity = ldl_summary_eth$ethnicity_mapping
+
+# Plot the map with shapefile and points for LDL levels
+ggplot() +
+  geom_sf(data = shp1, fill = "white", color = "black") +  # Base map (shapefile)
+  geom_sf(data = data[data$Avg_LDL!="NaN",], aes(color = Avg_LDL), size = 4) +    # Points with LDL values
+  #geom_text(data = data[data$Avg_LDL!="NaN",], aes(label = ethnicity), nudge_y = 0.05) + # Add text labels for LDL
+  theme_minimal() +
+  labs(title = "Average LDL Levels by Ethnicity",
+       color = "Avg LDL")  # Label for color scale
+
+ggplot() +
+  geom_sf(data = shp1, fill = "white", color = "black") +  # Base map (shapefile)
+  geom_sf(data = data[data$Avg_LDL != "NaN", ], aes(color = Avg_LDL), size = 4) +    # Points with LDL values
+  scale_color_gradient(low = "darkseagreen3", high = "palevioletred") +  # Custom color scale
+  theme_minimal() +
+  labs(title = "Average LDL Levels by Ethnicity",
+       color = "Avg LDL")  # Label for color scale
+
+data <- data %>%
+  mutate(LDL_Category = ifelse(Avg_LDL < 100, "Low (<100)", "High (≥100)"))
+
+
+
+ggplot() +
+  geom_sf(data = shp1, fill = "white", color = "black") +  # Base map
+  geom_sf(data = data[!is.na(data$Avg_LDL), ], aes(color = LDL_Category), size = 4) +  # Points with LDL values
+  scale_color_manual(values = c("Low (<100)" = "darkseagreen3", "High (≥100)" = "palevioletred")) +  # Custom colors
+  theme_minimal() +
+  labs(title = "Average LDL Levels by Ethnicity",
+       color = "Avg LDL")  # Legend label
+
+
+
+ggplot() +
+  geom_sf(data = shp1, fill = "white", color = "black") +  # Base map (shapefile)
+  geom_sf(data = data[data$Avg_LDL != "NaN", ], aes(color = Avg_LDL), size = 4) +  # Points with LDL values
+  scale_color_gradientn(colors = c("darkseagreen3", "moccasin", "palevioletred")) +  # Multi-step color scale
+  theme_minimal() +
+  labs(title = "Average LDL Levels by Ethnicity",
+       color = "Avg LDL")  # Label for color scale
